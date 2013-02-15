@@ -1,0 +1,124 @@
+.eiseList h1 {
+    font-size: 20px;
+    font-weight: bold;
+    font-family: Tahoma, Helvetica, sans-serif;
+    padding-left: 10px;
+}
+
+.el_foundRows {
+    padding-top: 5px;
+    padding-left: 5px;
+    font-size:14px;
+    font-weight: bold;
+    font-family: Tahoma, Helvetica, sans-serif;
+    
+}
+
+.el_body {
+    background: url('bg_ios_light.png') !important;
+}
+
+.el_table table {
+    border-bottom: 1px solid #336;
+}
+
+.el_spinner {
+    min-height: 90px;
+    background: url("ajax-loader.gif") no-repeat scroll center center transparent;
+    text-align: center;
+    margin-top: 80px;
+    padding-left: 15px;
+    font-family: Tahoma, Helvetica, sans-serif;
+    font-size: 8pt;
+    text-shadow: #ccc -1px -1px 0px;
+}
+
+.eiseList thead th
+, .eiseList thead td {
+    background: #99b4d1;
+    border-right: 1px solid #eee;
+}
+
+.eiseList thead input 
+, .eiseList thead select
+{
+    height: 14pt;
+}
+
+.el_filter {
+    padding: 0 5px !important;
+    font-size: 9pt;
+}
+
+.el_sorted_asc  div { padding-left: 10px; background: url("arr_asc.png") no-repeat -2px center transparent !important; font-weight: bold;}
+.el_sorted_desc  div { padding-left: 10px; background: url("arr_desc.png") no-repeat -2px center transparent !important; font-weight: bold;}
+
+.eiseList th {
+    color: CaptionText;
+    text-align: center;
+    padding: 5px 10px !important;
+    font-family: Lucida, Verdana, Helvetica, sans-serif;
+    font-size: 12px;
+    font-weight: normal;
+    text-shadow: #ccc -1px -1px 0px;
+}
+
+.el_tr0 { background-color: #F0F0F0; }
+.el_tr1 { background-color: #FFFFFF; }
+.el_tr_selected { background-color: InfoBackground; }
+
+.eiseList tbody td {
+    border-right: 1px solid #eee;
+    border-bottom: 1px solid #eee;
+    background: transparent;
+    padding-left: 4px;
+    padding-top: 2px;
+    padding-right: 4px;
+    padding-bottom: 0px;
+    font-size: 9pt;
+    height: 14pt;
+}
+
+tr.el_selected {
+    background-color: #ffc !important;
+}
+
+.el_checkbox  { text-align: center; }
+.el_checkbox  input{    width: auto; }
+
+.el_numeric
+, .el_num
+, .el_number
+, .el_money
+, .el_integer
+, .el_int {
+    text-align: right;
+}
+
+.el_boolean {
+    color: transparent;
+    text-align: center;
+}
+
+.el_boolean_s {
+    background: url("chm_b.gif") no-repeat scroll center center transparent !important;
+}
+
+.el_fieldChooser table {
+    margin: 0 auto;
+}
+.el_fieldChooser label {
+    float: right;
+    width: 200px;
+    min-width: 200px;
+}
+
+.el_debug  {
+    display: none;
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    font-size: 1.2em;
+    font-family: Courier New, Courier, fixed;
+    color: #f30;
+}

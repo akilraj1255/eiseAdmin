@@ -1,0 +1,92 @@
+.eiseList {
+    width: 100%;
+}
+
+.el_header {
+    width: 100%;
+    overflow: hidden;
+}
+
+.eiseList h1 {
+    float: left;
+    margin: 0;
+}
+
+.el_foundRows {
+    float: left;
+    display: none;
+}
+
+.el_controlBar {
+    float: right;
+}
+
+.el_controlBar input
+, .el_controlBar select {
+    width: auto;
+}
+
+.el_table {
+    max-width: 100%;
+    overflow: visible;
+    overflow-x: auto;
+    overflow-y: hidden;
+    clear: both;
+}
+
+.el_body {
+    min-width: 100%;
+    float: left;
+    overflow-x: hidden;
+    overflow-y: auto;
+    width: auto;
+    clear: both;
+}
+
+.el_table table {
+    border-bottom: 1px solid #336;
+}
+
+.el_spinner {
+    float: left;
+    display: none;
+}
+
+.eiseList thead th
+, .eiseList thead td {
+    padding: 0;
+}
+
+.el_sortable {
+    cursor: pointer;
+}
+
+.eiseList thead input 
+, .eiseList thead select
+{
+    padding: 0;
+    border: 0;
+    margin: 0;
+    border-radius: 0;
+}
+
+.eiseList th {
+    white-space: nowrap;
+}
+
+.eiseList thead input 
+, .eiseList thead select 
+{
+    width: 100%;
+    -webkit-box-sizing: border-box;
+    -moz-box-sizing: border-box;
+    box-sizing: border-box;
+}
+
+tr.el_template {
+    display: none;
+}
+
+.eiseList tbody td {
+    white-space: nowrap;
+}
