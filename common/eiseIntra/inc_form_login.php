@@ -267,11 +267,5 @@ if ($flagShowHost) {?>
 <div>Please enter your <strong><?php echo ($binding ? "Windows" : "database"); ?></strong> login/password.</div>
 </form>
 </div>
-<?php 
-
-echo "<pre>";
-print_r($_COOKIE);
-
- ?>
 </body>
 </html>

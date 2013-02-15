@@ -10,7 +10,7 @@ $arrActions[]= Array ("title" => "New database"
 include eiseIntraAbsolutePath."inc-frame_top.php";
 ?>
 
-<h1>Welcome to server <?php  echo $arrAuth["DBHOST"] ; ?>!</h1>
+<h1>Welcome to server <?php  echo $oSQL->dbhost ; ?>!</h1>
 
 <?php
 include eiseIntraAbsolutePath."inc-frame_bottom.php";
