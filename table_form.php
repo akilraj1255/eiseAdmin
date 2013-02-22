@@ -91,7 +91,6 @@ switch($pane){
 case "Data":
         
         $arrJS[] = commonStuffRelativePath."eiseList/eiseList.js";
-        $arrCSS[] = commonStuffRelativePath."eiseList/eiseList.css";
         $arrCSS[] = commonStuffRelativePath."eiseList/themes/default/screen.css";
         include_once(commonStuffAbsolutePath."eiseList/inc_eiseList.php");
         //echo "<pre>";

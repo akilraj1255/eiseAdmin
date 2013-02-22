@@ -59,6 +59,10 @@ function eiseList(divEiseList){
         oThis.sort($(this));
     })
     
+    this.thead.find('select.el_filter').change(function(){
+        oThis.form.submit();
+    })
+    
     this.form.submit(function(){
         if (oThis.conf.doNotSubmitForm==true){
             oThis.refreshList();
@@ -82,6 +86,7 @@ function eiseList(divEiseList){
 
 eiseList.prototype.adjustHeight = function(){
     
+    // calculate bottom margin
     var elParent = this.div;
     var bottomOffset = 0;
     while( elParent[0].nodeName!="BODY" ){
@@ -92,19 +97,27 @@ eiseList.prototype.adjustHeight = function(){
         elParent = elParent.parent();
     }
     
+    // calculate offset left/top for eiseList div    
     var offset = this.div.offset();
     
-    var listMargins = this.div.parent().outerHeight(true) - this.div.parent().height();
-    var listHeight = $(window).height() - offset.top - bottomOffset - 2;
+    var scrollWidth = ($.browser.msie ? this.getScrollWidth() : 0);
     
+    var listMargins = this.div.parent().outerHeight(true) - this.div.parent().height(); // list margins
+    
+    var listHeight = $(window).height() - offset.top - bottomOffset - 2 - scrollWidth; //new list height
     this.div.parent().height(listHeight);
+    
+    if ($.browser.msie){
+        this.div.parent().css("overflow", "hidden");
+    }
+    
     var headerHeight = this.header.outerHeight(true);
     var theadHeight = this.thead.outerHeight(true);
     var tfootHeight = (this.tfoot==undefined ? 0 : this.tfoot.outerHeight(true));
     
     this.scrollBarHeight = (this.scrollBarHeight==null 
         ? (this.thead.outerWidth(true) > this.div.outerWidth() 
-            ? this.getScrollWidth()
+            ? scrollWidth
             : 0)
         : this.scrollBarHeight);
     

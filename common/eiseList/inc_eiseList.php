@@ -189,7 +189,7 @@ public function handleDataRequest(){ // handle requests and return them with Aja
                     if ($col["title"]=="" || in_array($col["field"], $this->arrHiddenCols)) {
                         continue;
                     }
-                    $arrRow[$col["field"]] = $this->formatData($col, $rw[$col["field"]]);
+                    $arrRow[$col["field"]] = $this->formatData($col, $rw[$col["field"]], $rw);
                 
                 }
                 $xl->addRow($arrRow);
@@ -344,7 +344,7 @@ private function showTableHeader(){
                                 $arrCombo[$rwCombo['optValue']] = $rwCombo['optText'];
                             }
                         }
-                        $strTDFilter .= "<select id='cb_".$col["filter"]."' name='".$this->name."_".$col["filter"]."' class='el_filter' onchange=\"document.getElementById('".$this->name."').submit();\">\r\n";
+                        $strTDFilter .= "<select id='cb_".$col["filter"]."' name='".$this->name."_".$col["filter"]."' class='el_filter'>\r\n";
                         $strTDFilter .= "<option value=''>\r\n";
                         while (list($value, $text) = each($arrCombo)){
                             $strTDFilter .= "<option value='$value'".((string)$col["filterValue"]==(string)$value ? " selected" : "").">$text\r\n";
@@ -706,7 +706,7 @@ private function getRowArray($index, $rw){
         
         $arrField = Array();
         
-        $text = "";
+        $valFormatted = "";
         $val = $rw[$col['field']];
         $class = "";
         $href = "";
@@ -727,10 +727,10 @@ private function getRowArray($index, $rw){
             $val = ($index+1).".";
         
         /* formatting data */
-        $val = $this->formatData($col, $val);
+        $valFormatted = $this->formatData($col, $val, $rw);
         
-        $arrField["t"] = ($text!="" ? $text : $val); // we will always display text in here
-        if ($text!="")
+        $arrField["t"] = ($valFormatted!="" ? $valFormatted : $val); // we will always display text in here
+        if (in_array($col["type"], Array("combobox", "ajax_dropdown")))
             $arrField["v"] = $val;
             
         $arrFields[$col['field']] = $arrField;
@@ -746,7 +746,7 @@ private function getRowArray($index, $rw){
     return $arrRet;
 }
 
-private function formatData($col, $val){
+private function formatData($col, $val, $rw){
     switch ($col['type']) {
             case "date":
                 $val = $this->DateSQL2PHP($val, $this->conf['dateFormat']);
@@ -757,29 +757,35 @@ private function formatData($col, $val){
             case "time":
                 $val = $this->DateSQL2PHP($val, $this->conf['timeFormat']);
                 break;
-            case "money":
+                
             case "numeric":
+            case "integer":
+            case "number":
+            case "money":
             case "float":
             case "double":
-                $cell['decimalPlaces'] = isset($cell['decimalPlaces']) ? $cell['decimalPlaces'] : $this->conf['decimalPlaces'];
+                $cell['decimalPlaces'] = (in_array($col['type'], Array("numeric", "integer", "number"))
+                    ? 0
+                    : isset($cell['decimalPlaces']) ? $cell['decimalPlaces'] : $this->conf['decimalPlaces']
+                    );
                 $val = round($val, $cell['decimalPlaces']);
                 $val = number_format($val, $cell['decimalPlaces'], $this->conf['decimalSeparator'], $this->conf['thousandsSeparator']);
-                break;
-            case "combobox":
-            case "ajax_dropdown":
-                $text = (
-                    $rw[$col['field']."_Text"]!=""
-                    ? $rw[$col['field']."_Text"]
-                    : $val
-                );
                 break;
             case "boolean":
                 $val = (int)$val;
                 break;
+            case "combobox":         // return Text representation for FK-based columns
+            case "ajax_dropdown":
+                $val = ($rw[$col['field']."_Text"]!=""
+                    ? $rw[$col['field']."_Text"]
+                    : $val);
+                break;
             case "text":
             default:
                 mb_internal_encoding("UTF-8");
-                $val = ($col["limitOutput"] > 0 && mb_strlen($rw[$col['field']]) > $col["limitOutput"]) ? mb_substr($rw[$col['field']], 0, $col["limitOutput"])."..." : $val;
+                $val = ($col["limitOutput"] > 0 && mb_strlen($rw[$col['field']]) > $col["limitOutput"]) 
+                    ? mb_substr($rw[$col['field']], 0, $col["limitOutput"])."..." 
+                    : $val;
                 break;
         }
         return $val;
