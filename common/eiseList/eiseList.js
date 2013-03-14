@@ -4,37 +4,39 @@ function eiseList(divEiseList){
     
     var list = this;
     
-    this.id = divEiseList.attr('id');
+    list.id = divEiseList.attr('id');
     
-    this.div = divEiseList;
-    this.form = divEiseList.find('form');
-    this.header = this.div.find('.el_header');
-    this.divTable = this.div.find('.el_table');
-    this.thead = this.div.find('.el_thead');
-    this.body = this.div.find('.el_body');
-    this.tbody = this.body.find('table tbody');
-    this.tfoot = this.div.find('.el_tfoot');
-    this.divFieldChooser = this.div.find('.el_fieldChooser');
+    list.div = divEiseList;
+    list.form = divEiseList.find('form');
+    list.header = list.div.find('.el_header');
+    list.divTable = list.div.find('.el_table');
+    list.thead = list.div.find('.el_thead');
+    list.body = list.div.find('.el_body');
+    list.tbody = list.body.find('table tbody');
+    list.tfoot = list.div.find('.el_tfoot');
+    list.divFieldChooser = list.div.find('.el_fieldChooser');
     
-    this.scrollBarHeight = null;
+    list.scrollBarHeight = null;
     
-    this.activeRow = null;
+    list.activeRow = null;
     
-    this.conf = $.parseJSON(this.div.find('#inp_'+this.id+'_config').val());
+    list.conf = $.parseJSON(list.div.find('#inp_'+list.id+'_config').val());
     
-    this.activeRow = null;
+    list.activeRow = null;
     
-    this.currentOffset = 0;
+    list.nTotalRows = 0;
+    list.currentOffset = 0;
     
-    this.uploadInProgress = false;
+    list.uploadInProgress = false;
     
-    var oThis = this;
+    
+    
     // adjust contents div height
-    oThis.adjustHeight();
+    list.adjustHeight();
     
     //attach onResize event handling
     $(window).resize(function(){
-        oThis.adjustHeight();
+        list.adjustHeight();
     });
     
     // attach scroll event
@@ -52,35 +54,39 @@ function eiseList(divEiseList){
     
     
     this.tbody.find('tr').bind("click", function(){ //row select binding
-        oThis.selectRow($(this));
+        list.selectRow($(this));
     });
     
     this.thead.find('.el_sortable').click(function(){
-        oThis.sort($(this));
+        list.sort($(this));
     })
     
     this.thead.find('select.el_filter').change(function(){
-        oThis.form.submit();
+        list.form.submit();
     })
     
     this.form.submit(function(){
-        if (oThis.conf.doNotSubmitForm==true){
-            oThis.refreshList();
+        if (list.conf.doNotSubmitForm==true){
+            list.refreshList();
             return false;
         }
     })
         
         
     this.div.find('#btnFieldChooser').click(function (){
-        oThis.fieldChooser();
+        list.fieldChooser();
     });
     
     this.div.find('#btnOpenInExcel').click(function (){
-        oThis.openInExcel();
+        list.openInExcel();
     });
     
     this.div.find('#btnReset').click(function (){
-        oThis.reset();
+        list.reset();
+    });
+    
+    this.div.find('#sel_'+list.id+'_all').click(function (){
+        list.toggleRowSelection();
     });
 }
 
@@ -100,12 +106,13 @@ eiseList.prototype.adjustHeight = function(){
     // calculate offset left/top for eiseList div    
     var offset = this.div.offset();
     
-    var scrollWidth = ($.browser.msie ? this.getScrollWidth() : 0);
+    //var scrollWidth = ($.browser.msie ? this.getScrollWidth() : 0);
+    var scrollWidth = 0;
     
     var listMargins = this.div.parent().outerHeight(true) - this.div.parent().height(); // list margins
     
-    var listHeight = $(window).height() - offset.top - bottomOffset - 2 - scrollWidth; //new list height
-    this.div.parent().height(listHeight);
+    var listHeight = $(window).height() - offset.top - bottomOffset - scrollWidth; //new list height
+    this.div.height(listHeight);
     
     if ($.browser.msie){
         this.div.parent().css("overflow", "hidden");
@@ -113,37 +120,37 @@ eiseList.prototype.adjustHeight = function(){
     
     var headerHeight = this.header.outerHeight(true);
     var theadHeight = this.thead.outerHeight(true);
-    var tfootHeight = (this.tfoot==undefined ? 0 : this.tfoot.outerHeight(true));
+    var tfootHeight = this.tfoot.outerHeight(true);
     
     this.scrollBarHeight = (this.scrollBarHeight==null 
         ? (this.thead.outerWidth(true) > this.div.outerWidth() 
-            ? scrollWidth
+            ? this.getScrollWidth()
             : 0)
         : this.scrollBarHeight);
     
     this.bodyHeight = listHeight-(headerHeight + theadHeight + tfootHeight + this.scrollBarHeight);
     this.body.css('height', this.bodyHeight+'px');
-    
-    //adjust header width
-    //alert (this.header.outerWidth(true)-this.header.width());
-    //this.header.css('width', ($(window).width() - (this.header.outerWidth(true)-this.header.width()))+'px');
-    
+      
 }
 
 eiseList.prototype.getScrollWidth = function(){
     
-    var $inner = jQuery('<div style="width: 100%; height:200px;">test</div>'),
-        $outer = jQuery('<div style="width:200px;height:150px; position: absolute; top: 0; left: 0; visibility: hidden; overflow:hidden;"></div>').append($inner),
-        inner = $inner[0],
-        outer = $outer[0];
-     
-    jQuery('body').append(outer);
-    var width1 = inner.offsetWidth;
-    $outer.css('overflow', 'scroll');
-    var width2 = outer.clientWidth;
-    $outer.remove();
+    if (this.scrollBarHeight==null){
     
-    return (width1 - width2);
+        var $inner = jQuery('<div style="width: 100%; height:200px;">test</div>'),
+            $outer = jQuery('<div style="width:200px;height:150px; position: absolute; top: 0; left: 0; visibility: hidden; overflow:hidden;"></div>').append($inner),
+            inner = $inner[0],
+            outer = $outer[0];
+         
+        jQuery('body').append(outer);
+        var width1 = inner.offsetWidth;
+        $outer.css('overflow', 'scroll');
+        var width2 = outer.clientWidth;
+        $outer.remove();
+    
+        this.scrollBarHeight = (width1 - width2);
+    } 
+    return   this.scrollBarHeight;
 }
 
 eiseList.prototype.getQueryString = function(){
@@ -170,7 +177,7 @@ eiseList.prototype.getQueryString = function(){
     return strARG;
 }
 
-eiseList.prototype.getData = function(iOffset, recordCount, flagResetCache){
+eiseList.prototype.getData = function(iOffset, recordCount, flagResetCache, callback){
     
     if (this.uploadInProgress)
         return;
@@ -216,6 +223,7 @@ eiseList.prototype.getData = function(iOffset, recordCount, flagResetCache){
             
             //display count information
             if (iOffset==0 && list.conf.calcFoundRows==true){
+                list.nTotalRows = data.nTotalRows;
                 list.header.find('.el_span_foundRows').text(data.nTotalRows);
                 list.header.find('.el_foundRows').css("display", "inline-block");
             }
@@ -236,6 +244,10 @@ eiseList.prototype.getData = function(iOffset, recordCount, flagResetCache){
             list.adjustHeight();
             
             list.uploadInProgress = false;
+            
+            if (callback!=undefined){
+                callback();
+            }
             
         }
         , error: function(o, error, errorThrown){
@@ -459,6 +471,59 @@ eiseList.prototype.fieldsChosen = function(){
     //alert (document.getElementById(lstName+"HiddenCols").value);
     this.conf.doNotSubmitForm=false;
     this.form.submit();
+}
+
+eiseList.prototype.reset = function (){
+    
+    // requires jQuery!
+    $(".el_filter").each( function(idx, oInp){
+        switch(oInp.nodeName){
+            case "SELECT":
+                if (oInp.name.replace(this.id+"_", "")=="staID"){
+                    //INTRA2's staID exception
+                    break;
+                }
+                oInp.selectedIndex=0;
+                break;
+            case "INPUT":
+            default:
+                oInp.value = "";
+                break;
+        }
+    });
+}
+
+eiseList.prototype.toggleRowSelection = function(){
+    
+    var list = this;
+    
+    //1. check that we loaded all elements that match our selection
+    //1a. no calcFoundRows - no selections
+    if (!list.conf.calcFoundRows){
+        alert("Function is not supported when calcFoundRows option is off.");
+        return;
+    }
+    
+    if (list.currentOffset < list.nTotalRows) {
+        if (list.nTotalRows - list.nRowsLoaded > list.conf.maxRowsForSelection){
+            alert("Number of rows to be loaded exceeds "+list.conf.maxRowsForSelection+".");
+            return;
+        } else {
+            //2. if not, we download the rest (no more than specified in the config)    
+            list.getData(list.currentOffset, list.nTotalRows - list.currentOffset, false, function(){
+                list.toggleRowSelection();
+            });
+        }
+    } else {
+    
+        //3. loop thru matched elements
+        list.tbody.find('tr:not(.el_template) input[name="sel_'+list.id+'[]"]').each(function(){
+            this.checked = !this.checked;
+        });
+    
+    }
+    
+    
 }
 
 

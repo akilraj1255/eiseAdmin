@@ -35,8 +35,9 @@ public $conf = Array(
     
     , 'dataSource' => "" //$_SERVER["PHP_SELF"]
     
-    , 'rowsFirstPage' => 50
-    , 'rowsPerPage' => 35
+    , 'rowsFirstPage' => 100
+    , 'rowsPerPage' => 40
+    , 'maxRowsForSelection' => 1000
     , 'calcFoundRows' => true
     , 'cacheSQL' => true
     , 'doNotSubmitForm' => true
@@ -357,7 +358,7 @@ private function showTableHeader(){
                 }
             } elseif ($col['checkbox']) {
                 $strTDFilter .= "<div align='center'><input type='checkbox' style='width:auto;'".
-                    " onclick=\"return phpList_checkAll('".$this->sqlPK."[]');\" title='Select/unselect All'></div>";
+                    "id=\"sel_{$this->name}_all\" title='Select/unselect All'></div>";
             } else {
                 $strTDFilter .= "&nbsp;";
             }

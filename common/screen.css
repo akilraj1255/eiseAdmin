@@ -5,12 +5,12 @@ body{
 }
 
 #toc {
-    border-rigth: 2px solid ThreeDShadow;
     padding-right: 10px;
+    width: 160px;
 }
 
 #pane {
-    margin-top: -5px !important;
+    top: 65px;
 }
 
 /********************************************************************/
@@ -97,6 +97,19 @@ body{
 }
 /* /Header stuff                                                    */
 /********************************************************************/
+
+/* TOC menu stuff */
+#toc_button {
+    display: inline-block;
+    cursor: pointer;
+    width: 11px;
+    height: 10px;
+    background: White url(../common/images/bullet_menuhidden.png) no-repeat;
+}
+
+.toc_menushown {
+    background: White url(../common/images/bullet_menushown.png) no-repeat !important;
+}
 
 /********************************************************************/
 /* Menubar stuff                                                    */
