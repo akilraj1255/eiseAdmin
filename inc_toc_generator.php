@@ -4,7 +4,7 @@ $sqlDB = "SHOW DATABASES";
 $rsDB = $oSQL->do_query($sqlDB);
 ?>
 
-<ul class="simpleTree" id="toc">
+<ul class="simpleTree">
 <li id="" class="root"><span><a target='pane' href="server_form.php"><strong><?php  echo $oSQL->dbhost ; ?></strong></a></span>
 <ul>
 <?php
@@ -24,7 +24,7 @@ $arrFlags = Array();
 while ($rwTab = mysql_fetch_array($rsTab)) {
 ?>
    <li id="<?php  echo $rwDB["Database"]."|".$rwTab[0] ; ?>"><a target='pane' 
-      href="table_form.php?dbName=<?php  echo $rwDB["Database"] ; ?>&tblName=<?php  echo $rwTab[0] ; ?>"><span><?php echo($rwTab[0]) ?></span></a>
+      href="table_form.php?dbName=<?php  echo $rwDB["Database"] ; ?>&tblName=<?php  echo $rwTab[0] ; ?>"><span><?php echo($rwTab[0]) ?></span></a></li>
 <?php
    if ($rwTab[0]=="stbl_page") $arrFlags["hasPages"] = true;
    if ($rwTab[0]=="stbl_role") $arrFlags["hasRoles"] = true;
@@ -51,32 +51,35 @@ while ($rwEnt = $oSQL->fetch_array($rsEnt)){
 }
 ?>
 </ul>
+</li>
 <?php
 }
 
 if ($arrFlags["hasPages"]){
 ?>
 <li id="<?php  echo "pag|".$rwDB["Database"] ; ?>"><a target='pane'
-    href='page_list.php?dbName=<?php  echo $rwDB["Database"] ; ?>'><span><b>Pages</b></span></a>
+    href='page_list.php?dbName=<?php  echo $rwDB["Database"] ; ?>'><span><b>Pages</b></span></a></li>
 <li id="<?php  echo "pag|".$rwDB["Database"] ; ?>"><a target='pane'
-    href='role_form.php?dbName=<?php  echo $rwDB["Database"] ; ?>'><span><b>Roles</b></span></a>
+    href='role_form.php?dbName=<?php  echo $rwDB["Database"] ; ?>'><span><b>Roles</b></span></a></li>
 <li id="<?php  echo "pgr|".$rwDB["Database"] ; ?>"><a target='pane'
-    href='matrix_form.php?dbName=<?php  echo $rwDB["Database"] ; ?>'><span><b>Page-role matrix</b></span></a>
+    href='matrix_form.php?dbName=<?php  echo $rwDB["Database"] ; ?>'><span><b>Page-role matrix</b></span></a></li>
 <?php 
 }
 if ($arrFlags["hasMultiLang"]){
 ?>
 <li id="<?php  echo "str|".$rwDB["Database"] ; ?>"><a target='pane'
-    href='translation_form.php?dbName=<?php  echo $rwDB["Database"] ; ?>'><span><b>Translation table</b></span></a>
+    href='translation_form.php?dbName=<?php  echo $rwDB["Database"] ; ?>'><span><b>Translation table</b></span></a></li>
 <?php
 }
  ?>
 
 </ul>
-
+</li>
 <?php
 }
 ?>
 </ul>
+</li>
+
 </ul>
 <div>&nbsp;</div>
