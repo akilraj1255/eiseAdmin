@@ -345,7 +345,7 @@ if ($easyAdmin){
 	   , "class"=> "ss_page_copy"
 	);
 }
-include('../common/eiseIntra/inc-frame_top.php');
+include eiseIntraAbsolutePath."inc-frame_top.php";
 ?>
 <script>
 $(document).ready(function(){  
