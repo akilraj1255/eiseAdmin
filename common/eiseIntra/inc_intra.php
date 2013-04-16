@@ -20,6 +20,7 @@ function __construct($oSQL, $conf = Array()){
         , 'decimalSeparator' => "."
         , 'thousandsSeparator' => ","
         , 'logofftimeout' => 360 //6 hours
+        , 'addEiseIntraValueClass' => true
     );
     
     $this->conf = array_merge($this->conf, $conf);
@@ -319,18 +320,59 @@ function readSettings(){
     return $arrSetup;
 }
 
+
+private $arrHTML5AllowedInputTypes = 
+    Array("color", "date", "datetime", "datetime-local", "email", "month", "number", "range", "search", "tel", "time", "url", "week");
+
+private function handleClass(&$arrConfig){
+
+    $arrClass = Array();
+    if ($this->conf['addEiseIntraValueClass'])
+        $arrClass['eiseIntraValue'] = 'eiseIntraValue';
+    
+    // get contents of 'class' attribute in strAttrib
+    $prgClass = "/\s+class=[\"\']([^\"\']+)[\"\']/i";
+    $attribs = $arrConfig["strAttrib"];
+    if (preg_match($prgClass, $attribs, $arrMatch)){
+        $strClass = $arrMatch[1];
+        $arrConfig["strAttrib"] = preg_replace($prgClass, "", $arrConfig["strAttrib"]);
+    }
+    
+    // if we specify something in arrConfig, we add it to the string
+    if (!is_array($arrConfig["class"])){
+        $strClass = ($strClass!="" ? $strClass." " : "").$arrConfig["class"];
+    } else {
+        $strClass = ($strClass!="" ? $strClass." " : "").implode(" ",$arrConfig["class"]);
+    }
+    
+    // split class sting into array
+    $arrClassList = preg_split("/\s+/", $strClass); 
+    // remove duplicates using unique key
+    foreach($arrClassList as $class) 
+        if($class!="")
+            $arrClass[$class] =  $class;
+    
+    $arrConfig["class"] = $arrClass;
+    return " class=\"".implode(" ", $arrClass)."\"";
+}
+    
 function showTextBox($strName, $strValue, $arrConfig=Array()) {
     
     $flagWrite = isset($arrConfig["FlagWrite"]) ? $arrConfig["FlagWrite"] : $this->arrUsrData["FlagWrite"];
     
+    $strClass = $this->handleClass($arrConfig);
+    
     $strAttrib = $arrConfig["strAttrib"];
     if ($flagWrite){
-       $strRet = "<input type=\"text\" name=\"{$strName}\" id=\"{$strName}\"".
+        $type = (in_array($arrConfig['type'], $this->arrHTML5AllowedInputTypes) ? $arrConfig["type"] : 'text');
+       $strRet = "<input type=\"{$type}\" name=\"{$strName}\" id=\"{$strName}\"".
             ($strAttrib ? " ".$strAttrib : "").
+            ($strClass ? " ".$strClass : "").
+            ($arrConfig["required"] ? " required=\"required\"" : "").
        " value=\"".htmlspecialchars($strValue)."\" />\r\n";
     } else {
         $strRet = "<div id=\"span_{$strName}\"".
-        ($strAttrib ? " ".$strAttrib : "").">".
+        ($strAttrib ? " ".$strAttrib : "").$strClass.">".
         htmlspecialchars($strValue)."</div>\r\n".
         "<input type=\"hidden\" name=\"{$strName}\" id=\"{$strName}\"".
         " value=\"".htmlspecialchars($strValue)."\" />\r\n";
@@ -344,31 +386,40 @@ function showTextArea($strName, $strValue, $arrConfig=Array()){
     
     $flagWrite = isset($arrConfig["FlagWrite"]) ? $arrConfig["FlagWrite"] : $this->arrUsrData["FlagWrite"];
     
+    $strClass = $this->handleClass($arrConfig);
+    
     if ($flagWrite){
         $strRet .= "<textarea name=\"".$strName."\"";
         if($strAttrib) $strRet .= " ".$strAttrib;
-        $strRet .= ">";
+        $strRet .= ($strClass ? " ".$strClass : "").
+            ($arrConfig["required"] ? " required=\"required\"" : "").">";
         $strRet .= htmlspecialchars($strValue);
         $strRet .= "</textarea>";
     } else {
         $strRet = "<div id=\"span_{$strName}\"".
-        ($strAttrib ? " ".$strAttrib : "").">".htmlspecialchars($strValue)."</div>\r\n".
-        "<input type=\"hidden\" name=\"{$strName}\" id=\"{$strName}\"".
-        " value=\"".htmlspecialchars($strValue)."\" />\r\n";
+            ($strAttrib ? " ".$strAttrib : "").
+            $strClass.">".
+            htmlspecialchars($strValue)."</div>\r\n".
+            "<input type=\"hidden\" name=\"{$strName}\" id=\"{$strName}\"".
+            " value=\"".htmlspecialchars($strValue)."\" />\r\n";
     }
     return $strRet;        
     
 }
 
-function showCombo($strName, $strValue, $arrOptions, $arrConfig){
+function showCombo($strName, $strValue, $arrOptions, $arrConfig=Array()){
     
     $flagWrite = isset($arrConfig["FlagWrite"]) ? $arrConfig["FlagWrite"] : $this->arrUsrData["FlagWrite"];
     
     $retVal = "";
     
+    $strClass = $this->handleClass($arrConfig);
+    
     $strAttrib = $arrConfig["strAttrib"];
     if ($flagWrite){
-        $retVal .= "<select id=\"".$strName."\" name=\"".$strName."\"".$strAttrib.">\r\n";
+        $retVal .= "<select id=\"".$strName."\" name=\"".$strName."\"".$strAttrib.
+            ($strClass ? " ".$strClass : "").
+            ($arrConfig["required"] ? " required=\"required\"" : "").">\r\n";
         if ($arrConfig["strZeroOptnText"]){
             $retVal .= "<option value=\"\">".htmlspecialchars($arrConfig["strZeroOptnText"])."</option>\r\n" ;
         }
@@ -387,7 +438,7 @@ function showCombo($strName, $strValue, $arrOptions, $arrConfig){
         }
         $valToShow=($valToShow!="" ? $valToShow : $arrConfig["strZeroOptnText"]);
         
-        $retVal = "<span id=\"span_{$strName}\">".htmlspecialchars($valToShow)."</span>\r\n".
+        $retVal = "<div id=\"span_{$strName}\"{$strClass}>".htmlspecialchars($valToShow)."</div>\r\n".
         "<input type=\"hidden\" name=\"{$strName}\" id=\"{$strName}\"".
         " value=\"".htmlspecialchars($textToShow)."\" />\r\n";
         
@@ -399,6 +450,8 @@ function showCombo($strName, $strValue, $arrOptions, $arrConfig){
 function showCheckBox($strName, $strValue, $arrConfig=Array()){
     
     $flagWrite = isset($arrConfig["FlagWrite"]) ? $arrConfig["FlagWrite"] : $this->arrUsrData["FlagWrite"];
+    
+    $strClass = $this->handleClass($arrConfig);
     
     $strAttrib = $arrConfig["strAttrib"];
     $retVal = "<input name=\"{$strName}\" id=\"{$strName}\" type=\"checkbox\"".
@@ -457,16 +510,16 @@ function showAjaxDropdown($strFieldName, $strValue, $arrConfig) {
     
     $strOut = "";
     $strOut .= "<input type=\"hidden\" name=\"$strFieldName\" id=\"$strFieldName\" value=\"".htmlspecialchars($strValue)."\">\r\n";
-   
+    
+    $strClass = $this->handleClass($arrConfig);
+    
     if ($flagWrite){
-        $addParams = $arrConfig["strAttrib"];
-        $addParams = (preg_match("/class\=/", $addParams) 
-            ? preg_replace("/class=([\"\'])/", "class=\\1intra_ajax_dropdown ", $addParams)
-            : " class=\"intra_ajax_dropdown\"".$addParams);
         $strOut .= $this->showTextBox($strFieldName."_text", $arrConfig["strText"]
-            , Array("FlagWrite"=>true, "strAttrib" => $addParams." src=\"{table:'{$arrConfig["strTable"]}', prefix:'{$arrConfig["strPrefix"]}'}\" autocomplete=\"off\""));
+            , Array("FlagWrite"=>true
+                , "strAttrib" => $arrConfig["strAttrib"]." src=\"{table:'{$arrConfig["strTable"]}', prefix:'{$arrConfig["strPrefix"]}'}\" autocomplete=\"off\""
+                , "class" => array_merge($arrConfig["class"], Array("eiseIntra_ajax_dropdown"))));
     } else {
-        $strOut .= "<span id=\"span_{$strFieldName}\">".htmlspecialchars($arrConfig["strText"])."</span>\r\n";
+        $strOut .= "<div id=\"span_{$strFieldName}\"{$strClass}>".htmlspecialchars($arrConfig["strText"])."</div>\r\n";
     }
     
     return $strOut;
@@ -544,13 +597,17 @@ function getTableInfo($dbName, $tblName){
            || preg_match("/time/i", $rwCol["Type"]))
             $rwCol["DataType"] = "datetime";
             
-        if (preg_match("/ID$/", $rwCol["Field"]) && $rwCol["Key"] != "PRI")
+        if (preg_match("/ID$/", $rwCol["Field"]) && $rwCol["Key"] != "PRI"){
+            $rwCol["FKDataType"] = $rwCol["DataType"];
             $rwCol["DataType"] = "FK";
+        }
         
         if ($rwCol["Key"] == "PRI" 
                 || preg_match("/^$strPrefix(GU){0,1}ID$/i",$rwCol["Field"])
-            )
+            ){
+            $rwCol["PKDataType"] = $rwCol["DataType"];
             $rwCol["DataType"] = "PK";
+        }
         
         if ($rwCol["Field"]==$strPrefix."InsertBy" 
           || $rwCol["Field"]==$strPrefix."InsertDate" 
@@ -559,7 +616,7 @@ function getTableInfo($dbName, $tblName){
             $rwCol["DataType"] = "activity_stamp"; 
             $arrTable['hasActivityStamp'] = true;
         }
-        $arrCols[] = $rwCol;
+        $arrCols[$rwCol["Field"]] = $rwCol;
         if ($rwCol["Key"] == "PRI"){
             $arrPK[] = $rwCol["Field"];
             if ($rwCol["Extra"]=="auto_increment")
@@ -604,6 +661,17 @@ function getTableInfo($dbName, $tblName){
     $arrColsIX = Array();
     foreach($arrCols as $ix => $col){ $arrColsIX[$col["Field"]] = $col["Field"]; }
     
+    $strPKVars = $strPKCond = $strPKURI = '';
+    foreach($arrPK as $pk){
+        $strPKVars .= "\${$pk}  = (isset(\$_POST['{$pk}']) ? \$_POST['{$pk}'] : \$_GET['{$pk}'] );\r\n";
+        $strPKCond .= ($strPKCond!="" ? " AND " : "")."`{$pk}` = \".".(
+                in_array($arrCols["DataType"], Array("integer", "boolean"))
+                ? "(int)(\${$pk})"
+                : "\$oSQL->e(\${$pk})"
+            ).".\"";
+        $strPKURI .= ($strPKURI!="" ? "&" : "")."{$pk}=\".urlencode(\${$pk}).\"";
+    }
+    
     $arrTable['columns'] = $arrCols;
     $arrTable['keys'] = $arrKeys;
     $arrTable['PK'] = $arrPK;
@@ -611,6 +679,11 @@ function getTableInfo($dbName, $tblName){
     $arrTable['prefix'] = $strPrefix;
     $arrTable['table'] = $tblName;
     $arrTable['columns_index'] = $arrColsIX;
+    
+    $arrTable["PKVars"] = $strPKVars;
+    $arrTable["PKCond"] = $strPKCond;
+    $arrTable["PKURI"] = $strPKURI;
+
     
     return $arrTable;
 }
@@ -681,8 +754,8 @@ function getMultiPKCondition($arrPK, $strValue){
 }
 
 
-function getDataFromCommonViews($strValue, $strText, $strTable, $strPrefix, $flagShowDeleted=false){
-
+function getDataFromCommonViews($strValue, $strText, $strTable, $strPrefix, $flagShowDeleted=false, $extra=''){
+    
     $oSQL = $this->oSQL;
 
     if ($strPrefix!=""){
@@ -707,15 +780,20 @@ function getDataFromCommonViews($strValue, $strText, $strTable, $strPrefix, $fla
     if ($strValue!=""){ // key-based search
         $sql .= "\r\nWHERE `{$arrFields["idField"]}`=".$oSQL->escape_string($strValue);
     } else { //value-based search
+        $strExtra = '';
+        if ($extra!=''){
+            $arrExtra = explode("|", $extra);
+            foreach($arrExtra as $ix=>$ex){ $strExtra = ' AND extra'.($ix==0 ? '' : $ix).' = '.$oSQL->e($ex); }
+        }
         $sql .= "\r\nWHERE 
         (`{$arrFields["textField"]}` LIKE ".$oSQL->escape_string($strText, "for_search")." COLLATE 'utf8_general_ci'
             OR `{$arrFields["textFieldLocal"]}` LIKE ".$oSQL->escape_string($strText, "for_search")." COLLATE 'utf8_general_ci'";
 
         $sql .=	")
-		".($flagShowDeleted==false ? " AND IFNULL(`{$arrFields["delField"]}`, 0)=0" : "");
+		".($flagShowDeleted==false ? " AND IFNULL(`{$arrFields["delField"]}`, 0)=0" : "")
+        .$strExtra;
     }
     $sql .= "\r\nLIMIT 0, 30";
-    
     $rs = $oSQL->do_query($sql);
     
     return $rs;
@@ -771,10 +849,11 @@ function getUserData($usrID){
     $oSQL = $this->oSQL;
     $rs = $this->getDataFromCommonViews($usrID, "", "svw_user", "");
     $rw = $oSQL->fetch_array($rs);
+    
     return ($rw["optValue"]!="" 
         ? ($rw["optText{$this->local}"]==""
             ? $rw["optText"]
-            : $usrID)
+            : $rw["optText{$this->local}"])
          : $usrID);
 }
 

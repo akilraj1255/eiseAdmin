@@ -535,14 +535,14 @@ function Update($flagExecute = true){
         if ($col['mandatory'])
             $mndFieldName = $col["field"];
         
-        for ($j=0;$j<count($arrTable["columns"]);$j++) 
+        foreach($arrTable["columns"] as $j=>$field) 
             if (!$col['disabled'] && ($col['type']!="row_id")  && $col['field'] == $arrTable["columns"][$j]["Field"]){
                 $arrFields[] = $col['field'];
-                $arrTable["columns"][$j]['DataType'] = ($col['type']=="combobox" || $col['type']=="ajax_dropdown" 
+                $field['DataType'] = ($col['type']=="combobox" || $col['type']=="ajax_dropdown" 
                     ? "combobox" 
-                    : $arrTable["columns"][$j]['DataType']);
-                $arrValues[] = $this->getSQLValue($arrTable["columns"][$j], true);
-                $arrFieldsValues[] = $col['field'] ." = ".$this->getSQLValue($arrTable["columns"][$j], true);
+                    : $field['DataType']);
+                $arrValues[] = $this->getSQLValue($field, true);
+                $arrFieldsValues[] = $col['field'] ." = ".$this->getSQLValue($field, true);
             }
     }
     

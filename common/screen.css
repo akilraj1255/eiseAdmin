@@ -190,15 +190,30 @@ h1 {
     font-size: 11px;
 }
 
-fieldset{
-    margin: 0px 5px 5px 5px;
-    padding: 5px;
+.eiseIntraForm  fieldset{
+    background-color: #EEEEEE;
 }
-legend{
-    font-size: 12px;
+
+.eiseIntraForm legend{
+    font-size: 1em;
+    font-weight: 600;
+}
+
+.eiseIntraForm  label{
+    width: 24%;
     font-weight: bold;
-    color: Navy;
-    width: auto;
+    font-size: 0.9em;
+}
+
+.eiseIntraForm  .eiseValue{
+    width: 74%;
+    font-size: 1.1em;
+}
+
+.eiseIntraSubmit {
+    font-weight: bold;
+    font-size: 1.2em;
+    padding: 0.3em 4em;
 }
 
 .intraField label {

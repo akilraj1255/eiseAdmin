@@ -83,9 +83,9 @@ switch($pane){
            , 'type' => "text"
         );
 
-        for($i=0;$i<count($arrTable['columns']);$i++){
-          $arrTable['columns'][$i]['Field_id'] = $arrTable['columns'][$i]['Field'];
-          $grid->Rows[] = $arrTable['columns'][$i];
+        foreach($arrTable['columns'] as $i=>$col){
+          $col['Field_id'] = $col['Field'];
+          $grid->Rows[] = $col;
         }
      break;
 case "Data":
