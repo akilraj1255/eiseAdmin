@@ -3,7 +3,7 @@
 error_reporting(7);
 $stpExtendedLog = false;
 
-define ("eiseIntraRelativePath", "/".str_replace(
+define ("eiseIntraRelativePath", str_replace(
     str_replace(DIRECTORY_SEPARATOR, "/", $_SERVER["DOCUMENT_ROOT"])
     , ""
     , str_replace(DIRECTORY_SEPARATOR, "/", dirname(__FILE__)))
