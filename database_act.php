@@ -1,5 +1,77 @@
 <?php
 include "common/auth.php";
+
+function parse_mysql_dump($url){
+    $file_content = file($url);
+    $query = "";
+	$delimiter = ";";
+    foreach($file_content as $sql_line){
+        if (!preg_match("/^\#/", $sql_line) )
+		    $query .= $sql_line;
+		if (preg_match("/^CREATE FUNCTION/i", $sql_line) )
+		    $delimiter = ";;";
+        if(preg_match("/$delimiter\s*$/", $sql_line)){
+		  //echo "--\r\n".$query."\r\n---";
+          $result = mysql_query($query)or die('Error: '.mysql_error());
+          $query = "";
+		  $delimiter = ";";
+        }
+    }
+}
+
+function rollDBSVFramework($dbName){
+    
+    GLOBAL $oSQL;
+    
+    $table = $oSQL->d("SHOW TABLES FROM `{$dbName}` LIKE 'stbl_framework_version'");
+    if (!$table) {
+        die("Framework DBSV roll-out not possible");
+    }
+    
+    $verNumber = $oSQL->d("SELECT MAX(fvrNumber) FROM `{$dbName}`.stbl_framework_version");
+    
+    $verNumber = (!$verNumber ? $verNumber=59 : $verNumber);
+    
+    $oSQL->q("USE `$dbName`");
+    
+    echo "Current DB Framework Schema Version number is #".sprintf("%03d",$verNumber)."\r\n";
+
+    $dh  = opendir(eiseIntraAbsolutePath.".SQL");
+        
+    $arrFiles = Array();
+        
+    while (false !== ($filename = readdir($dh))) {
+       if (preg_match("/^([0-9]{3}).+(\.sql)/",$filename, $arrMatch)){
+          $arrFiles[(integer)$arrMatch[1]] = $filename;
+       }
+    }
+
+    ksort($arrFiles);
+    end($arrFiles);
+    $newVerNo = key($arrFiles);
+    echo "New version number is going to be #".sprintf("%03d",$newVerNo)."\r\n";ob_flush();
+    if ($newVerNo<=$verNumber) 
+       die("Nowhere to update. Currenct DB framework version is bigger than this update.\r\n\r\n");ob_flush();
+
+
+    for ($i=($verNumber+1);$i<=$newVerNo;$i++){
+       if (!isset($arrFiles[$i]))
+           die("Cannot get SQL script for version #$i.");
+        $fileName = eiseIntraAbsolutePath.".SQL".DIRECTORY_SEPARATOR.$arrFiles[$i];
+       $fh = fopen($fileName, "r");
+       parse_mysql_dump($fileName);
+       mysql_query("INSERT INTO stbl_framework_version (fvrNumber, fvrDate, fvrDesc) VALUES ($i, NOW(),'".
+          mysql_escape_string(fread($fh, filesize($fileName)))."')");
+       echo "Version is now #".sprintf("%03d",$i)."\r\n";
+       fclose($fh);
+    }
+    
+    
+}
+
+
+
+
 set_time_limit(1200);
 ob_start();
 ob_implicit_flush(true);
@@ -122,19 +194,21 @@ CREATE TABLE `stbl_framework_version` (
    
    $sqlTable[] = "
 CREATE TABLE `tbl_setup` (
-  `stpID` int(11) NOT NULL AUTO_INCREMENT,
-  `stpVarName` varchar(255) DEFAULT NULL,
-  `stpCharType` varchar(20) DEFAULT NULL,
-  `stpCharValue` varchar(255) DEFAULT NULL,
-  `stpFlagReadOnly` tinyint(4) DEFAULT NULL,
-  `stpNGroup` int(11) DEFAULT NULL,
-  `stpCharName` varchar(30) DEFAULT NULL,
-  `stpInsertBy` varchar(50) DEFAULT NULL,
-  `stpInsertDate` datetime DEFAULT NULL,
-  `stpEditBy` varchar(50) DEFAULT NULL,
-  `stpEditDate` datetime DEFAULT NULL,
-  PRIMARY KEY (`stpID`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT 'Stores common setting fot the system';
+	`stpID` INT(11) NOT NULL AUTO_INCREMENT,
+	`stpVarName` VARCHAR(255) NULL DEFAULT NULL,
+	`stpCharType` VARCHAR(20) NULL DEFAULT NULL,
+	`stpCharValue` VARCHAR(1024) NULL DEFAULT NULL,
+	`stpFlagReadOnly` TINYINT(4) NULL DEFAULT NULL,
+	`stpNGroup` INT(11) NULL DEFAULT NULL,
+	`stpCharName` VARCHAR(30) NULL DEFAULT NULL,
+	`stpCharNameLocal` VARCHAR(30) NULL DEFAULT NULL,
+	`stpInsertBy` VARCHAR(50) NULL DEFAULT NULL,
+	`stpInsertDate` DATETIME NULL DEFAULT NULL,
+	`stpEditBy` VARCHAR(50) NULL DEFAULT NULL,
+	`stpEditDate` DATETIME NULL DEFAULT NULL,
+	PRIMARY KEY (`stpID`)
+)
+COLLATE='utf8_general_ci' ENGINE=InnoDB COMMENT 'Stores common setting fot the system';
    ";
 if ($_POST["hasPages"]=="on") {
 
@@ -291,7 +365,7 @@ rluUserID
    
 if ($_POST["hasEntity"]=="on") {
    
-   $sqlTable[] = "
+   $sqlTable['CREATE TABLE stbl_entity'] = "
 CREATE TABLE `stbl_entity` (
   `entID` varchar(20) NOT NULL,
   `entTitle` varchar(255) NOT NULL DEFAULT '',
@@ -302,7 +376,7 @@ CREATE TABLE `stbl_entity` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT 'Defines entities';
    ";
    
-   $sqlTable[] = "
+   $sqlTable['CREATE TABLE stbl_action'] = "
 CREATE TABLE `stbl_action` (
   `actID` int(11) NOT NULL AUTO_INCREMENT,
   `actEntityID` varchar(20) DEFAULT NULL,
@@ -328,7 +402,7 @@ CREATE TABLE `stbl_action` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='Defines actions for entities';
    ";
    
-   $sqlTable[] = "
+   $sqlTable['CREATE TABLE stbl_role_action'] = "
 CREATE TABLE `stbl_role_action` (
   `rlaID` int(11) NOT NULL AUTO_INCREMENT,
   `rlaRoleID` varchar(10) NOT NULL,
@@ -339,7 +413,7 @@ CREATE TABLE `stbl_role_action` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='Allow or disallow action for entity';
     ";
     
-    $sqlTable[] = "
+    $sqlTable['CREATE TABLE stbl_action_log'] = "
 CREATE TABLE `stbl_action_log` (
   `aclGUID` char(36) NOT NULL DEFAULT '',
   `aclActionID` int(11) NOT NULL,
@@ -354,7 +428,7 @@ CREATE TABLE `stbl_action_log` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='Stores action history on entity items';
     ";
     
-    $sqlTable[] = "
+    $sqlTable['CREATE stbl_status'] = "
 CREATE TABLE `stbl_status` (
   `staID` int(11) NOT NULL,
   `staEntityID` varchar(20) NOT NULL DEFAULT '',
@@ -370,7 +444,7 @@ CREATE TABLE `stbl_status` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='Defines entity statuses';
     ";
     
-    $sqlTable[] = "
+    $sqlTable['CREATE TABLE stbl_attribute'] = "
 CREATE TABLE `stbl_attribute` (
   `atrID` varchar(255) NOT NULL,
   `atrEntityID` varchar(20) NOT NULL DEFAULT '',
@@ -390,7 +464,7 @@ CREATE TABLE `stbl_attribute` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='Defines entity attributes';
     ";
     
-    $sqlTable[] = "
+    $sqlTable['CREATE stbl_attribute_value'] = "
 CREATE TABLE `stbl_attribute_value` (
   `atvGUID` varchar(36) NOT NULL,
   `atvEntityID` varchar(10) NOT NULL,
@@ -407,7 +481,7 @@ CREATE TABLE `stbl_attribute_value` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='Stores entity attribute values';
     ";
     
-    $sqlTable[] = "
+    $sqlTable['CREATE stbl_action_attribute'] = "
 CREATE TABLE `stbl_action_attribute` (
   `aatID` int(11) NOT NULL AUTO_INCREMENT,
   `aatActionID` int(11) DEFAULT NULL,
@@ -421,7 +495,7 @@ CREATE TABLE `stbl_action_attribute` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='Defines the attributes to be set when the action is executed';
     ";
     
-   $sqlTable[] = "
+   $sqlTable['CREATE stbl_status_attribute'] = "
 CREATE TABLE `stbl_status_attribute` (
   `satID` int(11) NOT NULL AUTO_INCREMENT,
   `satStatusID` varchar(255) NOT NULL,
@@ -434,11 +508,10 @@ CREATE TABLE `stbl_status_attribute` (
   PRIMARY KEY (`satID`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
    ";
-}
     
     
     
-    $sqlTable[] = "
+    $sqlTable['INSERT stbl_action'] = "
 INSERT INTO `stbl_action` (`actID`, `actEntityID`, `actOldStatusID`, `actNewStatusID`, `actTitle`, `actTitleLocal`, `actTitlePast`, `actTitlePastLocal`, `actDescription`, `actDescriptionLocal`, `actFlagDeleted`, `actPriority`, `actFlagComment`, `actInsertBy`, `actInsertDate`, `actEditBy`, `actEditDate`) VALUES
 	(1,NULL,NULL,0,'Create','Create','Created','Created','create new','create new',0,0,0,'ELISEEEV',NULL,'ELISEEV',NULL),
 	(2,NULL,NULL,NULL,'Update','Update','Updated','Updated','update existing','update existing',0,0,0,'ELISEEV',NULL,'ELISEEV',NULL),
@@ -447,63 +520,45 @@ INSERT INTO `stbl_action` (`actID`, `actEntityID`, `actOldStatusID`, `actNewStat
     
     //echo "Dick:".(count($sqlTable));
     
-    for ($i=0;$i<count($sqlTable);$i++){
-       echo $sqlTable[$i];
+    foreach($sqlTable as $action=>$sql)
+        echo $action."\r\n";ob_flush();
         $oSQL->do_query($sqlTable[$i]);
     }
    
-   
-/*
-DROP TABLE IF EXISTS `tbl_job_attribute`;
-CREATE TABLE `tbl_job_attribute` (
-  `jatID` varchar(20) NOT NULL,
-  `jatTitle` varchar(255) DEFAULT NULL,
-  `jatTitleLocal` varchar(255) DEFAULT NULL,
-  `jatType` varchar(20) DEFAULT NULL,
-  `jatOrder` int(11) DEFAULT '10',
-  `jatFlagCostKey` tinyint(4) DEFAULT '0',
-  `jatFlagDeleted` int(11) NOT NULL DEFAULT '0',
-  `jatInsertBy` varbinary(255) DEFAULT NULL,
-  `jatInsertDate` datetime DEFAULT NULL,
-  `jatEditBy` varbinary(255) DEFAULT NULL,
-  `jatEditDate` datetime DEFAULT NULL,
-  PRIMARY KEY (`jatID`)
-) ENGINE=MyISAM DEFAULT CHARSET=utf8;
-
-
-
-DROP TABLE IF EXISTS `tbl_job_attribute_value`;
-
-#
-# Table structure for table 'tbl_job_attribute_value'
-#
-
-CREATE TABLE `tbl_job_attribute_value` (
-  `javID` int(11) NOT NULL AUTO_INCREMENT,
-  `javAttributeID` varchar(20) NOT NULL,
-  `javJobID_` varchar(255) DEFAULT NULL,
-  `javJobID` varchar(255) DEFAULT NULL,
-  `javValue` varchar(255) DEFAULT NULL,
-  PRIMARY KEY (`javID`)
-) ENGINE=MyISAM AUTO_INCREMENT=3379 DEFAULT CHARSET=utf8;
-
-DROP TABLE IF EXISTS `stbl_action`;
-DROP TABLE IF EXISTS `stbl_action_log`;
-DROP TABLE IF EXISTS `stbl_entity`;
-DROP TABLE IF EXISTS `stbl_page`;
-DROP TABLE IF EXISTS `stbl_page_role`;
-DROP TABLE IF EXISTS `stbl_role`;
-DROP TABLE IF EXISTS `stbl_role_action`;
-DROP TABLE IF EXISTS `stbl_role_user`;
-DROP TABLE IF EXISTS `stbl_status`;
-DROP TABLE IF EXISTS `stbl_user_log`;
-DROP TABLE IF EXISTS `stbl_version`;
-*/   
-
-echo "</pre>";
+    echo "</pre>";
 
 }
 
 break;
+
+
+
+case "upgrade":
+
+    include eiseIntraAbsolutePath."inc_entity_item.php";
+
+    set_time_limit(0);
+
+    //$oSQL->startProfiling();
+    for ($i = 0; $i < ob_get_level(); $i++) { ob_end_flush(); }
+    ob_implicit_flush(1);
+    echo str_repeat(" ", 256)."<pre>"; ob_flush();
+
+    rollDBSVFramework($dbName);    
+    
+    die();
+    
+    echo "Upgrading entities...\r\n";ob_flush();
+/*
+    $sqlEnt = "SELECT * FROM stbl_entity";
+    $rsEnt = $oSQL->q($sqlEnt);
+    while($rwEnt = $oSQL->f($rsEnt)){
+        $ent = new eiseEntity($oSQL, $intra, $rwEnt["entID"]);
+        $ent->upgrade_eiseIntra();
+    }
+*/
+    break;
+
 }
+
 ?>

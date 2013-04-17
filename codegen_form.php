@@ -5,7 +5,7 @@ $oSQL->dbname=$_GET["dbName"];
 $dbName = $oSQL->dbname;
 $tblName = $_GET["tblName"];
 
-function getInsertCode($toGen, $arrTable){
+function getInsertCode($toGen, $arrTable, $indent=""){
         
         GLOBAL $intra;
         
@@ -13,31 +13,30 @@ function getInsertCode($toGen, $arrTable){
        
         $strFields = "";
         $strValues = "";
-        for($i=0;$i<count($arrTable['columns']);$i++){
-          $col = $arrTable['columns'][$i];
+        foreach($arrTable['columns'] as $i=>$col){
           
-          $rn = ($i>0 
-                 ?($arrTable['columns'][$i-1]["DataType"]=="activity_stamp" && $col["DataType"]=="activity_stamp" ? "" : "\r\n")
-                 : "\r\n"
-                 );
+            $rn = $prevCol["DataType"]=="activity_stamp" && $col["DataType"]=="activity_stamp" ? "" : "\r\n".$indent."    ";
           
-          $strFields .= ($strFields!="" ? $rn.", " : "");
-          $strValues .= ($strValues!="" ? $rn.", " : "");
+            $strFields .= ($strFields!="" ? $rn.", " : "");
+            $strValues .= ($strValues!="" ? $rn.", " : "");
           
-          if ($col["DataType"]=="PK"){
-              switch($arrTable['PKtype']){
-                 case "auto_increment":
-                    break;
-                 case "GUID":
-                 default:
-                    $strFields .= $col["Field"];
-                    $strValues .= ($arrTable['PKtype']=="GUID" ? "@".$col["Field"] : "'\$".$col["Field"]."'");
-                    break;
-              }
-              continue;
-          }
-          $strFields .= $col["Field"];
-          $strValues .= ($toGen=="INSERT PHP" ? $intra->getSQLValue($col) : " #".$col["Field"]);
+            if ($col["DataType"]=="PK"){
+                switch($arrTable['PKtype']){
+                    case "auto_increment":
+                        break;
+                    case "GUID":
+                    default:
+                        $strFields .= $col["Field"];
+                        $strValues .= ($arrTable['PKtype']=="GUID" ? "@".$col["Field"] : "'\$".$col["Field"]."'");
+                        break;
+                }
+                continue;
+            }
+            $strFields .= "`".$col["Field"]."`";
+            $strValues .= ($toGen=="INSERT PHP" ? $intra->getSQLValue($col) : " #".$col["Field"]);
+          
+            $prevCol = $col;
+          
         }
         
         $strCode = "";
@@ -45,9 +44,9 @@ function getInsertCode($toGen, $arrTable){
         if ($arrTable['PKtype']=="GUID")
             $strCode .= "SET @".$arrTable['PK'][0]."=UUID();\r\n\r\n";
             
-        $strCode .= "INSERT INTO $tblName (\r\n";
+        $strCode .= "INSERT INTO $tblName (\r\n{$indent}    ";
         $strCode .= $strFields;
-        $strCode .= "\r\n) VALUES (\r\n";
+        $strCode .= "\r\n{$indent}) VALUES (\r\n{$indent}    ";
         $strCode .= $strValues;
         $strCode .= ");";
         
@@ -57,40 +56,34 @@ function getInsertCode($toGen, $arrTable){
         return $strCode;
 }
 
-function getUpdateCode($toGen, $arrTable){
+function getUpdateCode($toGen, $arrTable, $indent=""){
         
         GLOBAL $intra;
         
         $tblName = $arrTable["table"];
        
 
-        $strCode = "UPDATE $tblName SET\r\n";
+        $strCode = "UPDATE $tblName SET\r\n".$indent."    ";
         
         $strFields = "";
-        $strPKs = "";
-        for($i=0;$i<count($arrTable['columns']);$i++){
-          $col = $arrTable['columns'][$i];
+        $strPKs = $arrTable["PKCond"];
+        foreach($arrTable['columns'] as $i=>$col){
           
-          if ($col["DataType"]=="PK") {
-              $strPKs .= ($strPKs!="" ? "AND " : "").$col["Field"]." = ".$intra->getSQLValue($col);
-              continue;
-          }
-          if ($col["DataType"]=="activity_stamp" && preg_match("/insert/i",$col["Field"]))
-              continue;
+            if ($col["DataType"]=="activity_stamp" && preg_match("/insert/i",$col["Field"]))
+                continue;
           
-          $rn = ($i>0 
-                 ?($prevDT =="activity_stamp" && $col["DataType"]=="activity_stamp" ? "" : "\r\n")
-                 : "\r\n"
-                 );
+            $rn = $prevCol["DataType"]=="activity_stamp" && $col["DataType"]=="activity_stamp" ? "" : "\r\n".$indent."    ";
           
-          $strFields .= ($strFields!="" ? $rn.", " : "");
-          $strFields .= $col["Field"]." = ".($toGen=="UPDATE PHP" ? $intra->getSQLValue($col) : " #".$col["Field"]);
+            $strFields .= ($strFields!="" ? $rn.", " : "");
+            $strFields .= $col["Field"]." = ".($toGen=="UPDATE PHP" ? $intra->getSQLValue($col) : " #".$col["Field"]);
           
-          $prevDT = $col["DataType"];
+            $prevDT = $col["DataType"];
+            
+            $prevCol = $col;
         }
         
         $strCode .= $strFields;
-        $strCode .= "\r\nWHERE ".$strPKs;
+        $strCode .= "\r\n{$indent}WHERE ".$strPKs;
         
         return $strCode;
 }
@@ -422,33 +415,58 @@ include('../common/inc-frame_bottom.php');
         
         break;
     case "Form":
+        //echo "<pre>";
+        //print_r($arrTable); die();
         $strCode .= "<?php\r\n";
         $strCode .= "include 'common/auth.php';\r\n\r\n";
         
-        $strCode .= "\$".$arrTable["PK"][0]."  = (isset(\$_POST['".$arrTable["PK"][0]."']) ? \$_POST['".$arrTable["PK"][0]."'] : \$_GET['".$arrTable["PK"][0]."'] );\r\n";
+        foreach($arrTable["PK"] as $pk){
+            $strCode .= "\${$pk}  = (isset(\$_POST['{$pk}']) ? \$_POST['{$pk}'] : \$_GET['{$pk}'] );\r\n";
+            $pkCond .= ($pkCond!="" ? " AND " : "")."`{$pk}` = \".\$oSQL->e(\${$pk}).\"";
+            $pkURI .= ($pkURI!="" ? "&" : "")."{$pk}`=\".urlencode(\${$pk}).\"";
+        }
         $strCode .= "\$DataAction  = (isset(\$_POST['DataAction']) ? \$_POST['DataAction'] : \$_GET['DataAction'] );\r\n\r\n";
         
+        $strCode .= "\r\nif(\$intra->arrUsrData['FlagWrite']){\r\n";
         $strCode .= "\r\nswitch(\$DataAction){
-    case \"update\":
+    case 'update':
+        
+        \$oSQL->q('START TRANSACTION');
+        
         if (\$".$arrTable["PK"][0]."==\"\") {
-            \$sql[] = \"".getInsertCode("INSERT PHP", $arrTable)."\";
+            \$sqlIns = \"".getInsertCode("INSERT PHP", $arrTable, "                ")."\";
+            \$oSQL->q(\$sqlIns);".(
+            $arrTable["PKtype"]=="auto_increment" 
+                ? "\r\n\$".$arrTable["PK"][0]." = \$oSQL->i();"
+                : "")."
         } else {
-            \$sql[] = \"".getUpdateCode("UPDATE PHP", $arrTable)."\";
+            \$sqlUpd = \"".getUpdateCode("UPDATE PHP", $arrTable, "                ")."\";
+            \$oSQL->q(\$sqlUpd);
         }
         
-        for(\$i=0;\$i<count(\$sql);\$i++){
-           \$oSQL->do_query(\$sql[\$i]);
-        }
+        \$oSQL->q('COMMIT');
+        
         
         SetCookie(\"UserMessage\", \"Data is updated\");
-        header(\"Location: \".\$_SERVER[\"PHP_SELF\"].\"?{$arrTable["PK"][0]}={\${$arrTable["PK"][0]}}\");
+        header(\"Location: \".\$_SERVER[\"PHP_SELF\"].\"?{$pkURI}\");
         die();
-        break;
+        
+    case 'delete':
+    
+        \$oSQL->q('START TRANSACTION');
+        \$sqlDel = \"DELETE FROM `{$tblName}` WHERE ".$arrTable["PKCond"]."\";
+        \$oSQL->q(\$sqlDel);
+        \$oSQL->q('COMMIT');
+        SetCookie(\"UserMessage\", \"Data is deleted\");
+        header(\"Location: \".preg_replace('/form\.php$/', 'list.php', \$_SERVER[\"PHP_SELF\"]));
+        die();
+        
     default:
         break;
 }
+}
 
-\$sql".strtoupper($arrTable['prefix'])." = \"SELECT * FROM $tblName WHERE ".$arrTable["PK"][0]."='\$".$arrTable["PK"][0]."'\";
+\$sql".strtoupper($arrTable['prefix'])." = \"SELECT * FROM `{$tblName}` WHERE ".$arrTable["PKCond"]."\";
 \$rs".strtoupper($arrTable['prefix'])." = \$oSQL->do_query(\$sql".strtoupper($arrTable['prefix']).");
 \$rw".strtoupper($arrTable['prefix'])." = \$oSQL->fetch_array(\$rs".strtoupper($arrTable['prefix']).");
 
@@ -456,24 +474,20 @@ include('../common/inc-frame_bottom.php');
 	   , 'action' => \"".(str_replace("tbl_", "", $tblName))."_list.php\"
 	   , 'class'=> 'ss_arrow_left'
 	);
-\$arrJS[] = \"../common/easyCal/easyCal.js\";
-include('../common/inc-frame_top.php');
+\$arrJS[] = jQueryUIRelativePath.'js/jquery-ui-1.8.16.custom.min.js';
+\$arrCSS[] = jQueryUIRelativePath.'css/'.jQueryUITheme.'/jquery-ui-1.8.16.custom.css';
+include eiseIntraAbsolutePath.'inc-frame_top.php';
 ?>
 
-<h1><?php echo \$intra->arrUsrData[\"pagTitle{\$intra->local}\"]; ?></h1>
+<form action=\"<?php  echo \$_SERVER[\"PHP_SELF\"] ; ?>\" method=\"POST\" class=\"eiseIntraForm\">\r\n";
+foreach($arrTable["PK"] as $i=>$pk){
+    $strCode .= "<input type=\"hidden\" name=\"".$pk."\" value=\"<?php  echo htmlspecialchars(\$".$pk.") ; ?>\">\r\n";
+}
+$strCode .= "<input type=\"hidden\" name=\"DataAction\" value=\"update\">
 
-<div class=\"panel\">
-<form action=\"<?php  echo \$_SERVER[\"PHP_SELF\"] ; ?>\" method=\"POST\">
-<input type=\"hidden\" name=\"".$arrTable["PK"][0]."\" value=\"<?php  echo htmlspecialchars(\$".$arrTable["PK"][0].") ; ?>\">
-<input type=\"hidden\" name=\"DataAction\" value=\"update\">
-
-<table width=\"100%\">
-<tr><td width=\"70%\">
-
-<fieldset class=\"intra\"><legend><?php  echo \$intra->translate(\"Data\") ; ?></legend>\r\n\r\n";
-
-        for($i=0;$i<count($arrTable['columns']);$i++){
-           $col = $arrTable['columns'][$i];
+<fieldset class=\"eiseIntraMainForm\"><legend><?php echo \$intra->arrUsrData[\"pagTitle{\$intra->local}\"]; ?></legend>\r\n\r\n";
+        $i=0;
+        foreach($arrTable['columns'] as $ix=>$col){
            if ($col["DataType"]=="PK")
                continue;
            if ($col["DataType"]=="binary")
@@ -482,8 +496,8 @@ include('../common/inc-frame_top.php');
                continue;
            
            
-           $strCode .= "<div class=\"intraField tr".($i%2)."\">\r\n".
-            "<label><?php echo \$intra->translate(\"".($col["Comment"]!="" ? $col["Comment"] : $col["Field"])."\"); ?>:</label>\r\n";
+           $strCode .= "<div class=\"eiseIntraField\">\r\n".
+            "<label><?php echo \$intra->translate(\"".($col["Comment"]!="" ? $col["Comment"] : $col["Field"])."\"); ?>:</label>";
            $strCode .= "<?php\r\n";
            $strParams ="";
            switch ($col["DataType"]){
@@ -498,66 +512,61 @@ include('../common/inc-frame_top.php');
                     }
                    $strCode .= "while(\$rw = \$oSQL->f(\$rs)){ \$arrOptions[\$rw['optValue']] = \$rw['optText']; }\r\n";
                    $strCode .=    
-                   "echo \$intra->showCombo(\"".$arrTable['columns'][$i]["Field"]."\", \$rw".strtoupper($arrTable['prefix'])."[\"".$arrTable['columns'][$i]["Field"]."\"], \$arrOptions
+                   "echo \$intra->showCombo(\"".$col["Field"]."\", \$rw".strtoupper($arrTable['prefix'])."[\"".$col["Field"]."\"], \$arrOptions
                    , Array('strZeroOptnText'=>\$intra->translate('-- please select')));\r\n";
                   break;
                case "date":
                case "datetime":
-                  $strCode .= "echo \$intra->showTextBox(\"".$arrTable['columns'][$i]["Field"]."\", ".
-                  "\$intra->DateSQL2PHP(\$rw".strtoupper($arrTable['prefix'])."[\"".$arrTable['columns'][$i]["Field"]."\"])".
-                  ", Array('strAttrib'=>' class=\"intra_date\"'));\r\n";
+                  $strCode .= "echo \$intra->showTextBox(\"".$col["Field"]."\", ".
+                  "\$intra->DateSQL2PHP(\$rw".strtoupper($arrTable['prefix'])."[\"".$col["Field"]."\"])".
+                  ", Array('type'=>'{$col["DataType"]}'));\r\n";
                   break;
                case "real":
                case "integer":
+                  $strCode .= " echo \$intra->showTextBox(\"".$col["Field"]."\", ".
+                  "\$rw".strtoupper($arrTable['prefix'])."[\"".$col["Field"]."\"]".
+                  ", Array('type'=>'number'));";
+                  break;
+               case "boolean":
+                  $strCode .= " echo \$intra->showCheckBox(\"".$col["Field"]."\", ".
+                  "\$rw".strtoupper($arrTable['prefix'])."[\"".$col["Field"]."\"]);";
+                  break;
                default:
-                  $strCode .= " echo \$intra->showTextBox(\"".$arrTable['columns'][$i]["Field"]."\", ".
-                  "\$rw".strtoupper($arrTable['prefix'])."[\"".$arrTable['columns'][$i]["Field"]."\"]".
-                  ");";
+                  $strCode .= " echo \$intra->showTextBox(\"".$col["Field"]."\", ".
+                  "\$rw".strtoupper($arrTable['prefix'])."[\"".$col["Field"]."\"]".
+                  ", Array('type'=>'text'));";
                   break;
            }
            $strCode .= "?></div>\r\n\r\n";
         }
 
-$strCode .= "
-</fieldset>
-</td>
-
-<td width=\"30%\"></td>
-</tr>
+$strCode .= "<div class=\"eiseIntraField\">\r\n
 <?php 
 if (\$intra->arrUsrData[\"FlagWrite\"]) {
  ?>
-<tr><td><div align=\"center\"><input type=\"Submit\" value=\"Update\" onclick=\"return checkForm();\">
+<label>&nbsp;</label><div class=\"eiseIntraValue\"><input class=\"eiseIntraSubmit\" type=\"Submit\" value=\"Update\">
 <?php 
 if (\$".$arrTable['PK'][0]."!=\"\" && \$rw".strtoupper($arrTable['prefix'])."[\"".$arrTable['prefix']."DeleteDate\"]==\"\"){
 ?>
-<input type=\"Submit\" value=\"Delete\" onclick=\"return confirmDelete()\" style=\"width:auto;\">
+<input type=\"Submit\" value=\"Delete\" class=\"eiseIntraDelete\">
 <?php  
   }
-?>
-</div></td></tr>
-<?php 
 }
- ?>
-</table>
+?></div>
+
+</div>\r\n";
+
+$strCode .= "
+</fieldset>
 </form>
 <script>
-function confirmDelete(){
-   if(confirm(\"Are you sure you'd like to delete?\")){
-      document.getElementById(\"DataAction\").value=\"delete\";
-      return true;
-   }
-   return false;
-}
-
-function checkForm(){
-   return true;
-}
+$(document).ready(function(){
+    eiseIntraInitializeForm();
+});
 </script>
 <?php
-include('../common/inc-frame_bottom.php');
-?>
-";
+include eiseIntraAbsolutePath.'inc-frame_bottom.php';
+?>";
         
         break;
     case "MissingFields":

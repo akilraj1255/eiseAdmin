@@ -43,23 +43,52 @@ $gridENT->Columns[] = Array(
 );
 */
 $gridENT->Columns[] = Array(
-        'title' => "entTitle"
+        'title' => "Title"
         , 'field' => "entTitle"
+        , 'type' => "text"
+);$gridENT->Columns[] = Array(
+        'title' => "Title (Mul)"
+        , 'field' => "entTitleMul"
         , 'type' => "text"
 );
 $gridENT->Columns[] = Array(
-        'title' => "entTitleLocal"
+        'title' => "Title (Local)"
         , 'field' => "entTitleLocal"
+        , 'type' => "text"
+);
+$gridENT->Columns[] = Array(
+        'title' => "Title (Local: Mul)"
+        , 'field' => "entTitleLocalMul"
+        , 'type' => "text"
+);
+$gridENT->Columns[] = Array(
+        'title' => "Title (Local: Gen)"
+        , 'field' => "entTitleLocalGen"
+        , 'type' => "text"
+);
+$gridENT->Columns[] = Array(
+        'title' => "Title (Local: Dat)"
+        , 'field' => "entTitlLocaleDat"
+        , 'type' => "text"
+);
+$gridENT->Columns[] = Array(
+        'title' => "Title (Local: Acc)"
+        , 'field' => "entTitleLocalAcc"
+        , 'type' => "text"
+);
+$gridENT->Columns[] = Array(
+        'title' => "Title (Local: Ins)"
+        , 'field' => "entTitleLocalIns"
+        , 'type' => "text"
+);
+$gridENT->Columns[] = Array(
+        'title' => "Title (Local: Abl)"
+        , 'field' => "entTitleLocalAbl"
         , 'type' => "text"
 );
 $gridENT->Columns[] = Array(
         'title' => "entTable"
         , 'field' => "entTable"
-        , 'type' => "text"
-);
-$gridENT->Columns[] = Array(
-        'title' => "entPrefix"
-        , 'field' => "entPrefix"
         , 'type' => "text"
 );
 

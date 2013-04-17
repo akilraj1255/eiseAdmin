@@ -41,6 +41,7 @@ td     {  	vertical-align: top; padding: 0;}
         display: block;
         overflow: hidden;
         position: fixed;
+        z-index: 10;
 }
 
 div.menubutton  {
@@ -61,5 +62,152 @@ div.menubutton  {
     white-space: nowrap;
     z-index: 125;
 }
+
+.eiseIntraError {
+    border: 1px solid #f30;
+    background-color: #ff9966;
+    color: #660000;
+    line-height: 1.5em;
+    background-image: url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABGdBTUEAAK/INwWK6QAAABl0RVh0U29mdHdhcmUAQWRvYmUgSW1hZ2VSZWFkeXHJZTwAAAIsSURBVDjLpVNLSJQBEP7+h6uu62vLVAJDW1KQTMrINQ1vPQzq1GOpa9EppGOHLh0kCEKL7JBEhVCHihAsESyJiE4FWShGRmauu7KYiv6Pma+DGoFrBQ7MzGFmPr5vmDFIYj1mr1WYfrHPovA9VVOqbC7e/1rS9ZlrAVDYHig5WB0oPtBI0TNrUiC5yhP9jeF4X8NPcWfopoY48XT39PjjXeF0vWkZqOjd7LJYrmGasHPCCJbHwhS9/F8M4s8baid764Xi0Ilfp5voorpJfn2wwx/r3l77TwZUvR+qajXVn8PnvocYfXYH6k2ioOaCpaIdf11ivDcayyiMVudsOYqFb60gARJYHG9DbqQFmSVNjaO3K2NpAeK90ZCqtgcrjkP9aUCXp0moetDFEeRXnYCKXhm+uTW0CkBFu4JlxzZkFlbASz4CQGQVBFeEwZm8geyiMuRVntzsL3oXV+YMkvjRsydC1U+lhwZsWXgHb+oWVAEzIwvzyVlk5igsi7DymmHlHsFQR50rjl+981Jy1Fw6Gu0ObTtnU+cgs28AKgDiy+Awpj5OACBAhZ/qh2HOo6i+NeA73jUAML4/qWux8mt6NjW1w599CS9xb0mSEqQBEDAtwqALUmBaG5FV3oYPnTHMjAwetlWksyByaukxQg2wQ9FlccaK/OXA3/uAEUDp3rNIDQ1ctSk6kHh1/jRFoaL4M4snEMeD73gQx4M4PsT1IZ5AfYH68tZY7zv/ApRMY9mnuVMvAAAAAElFTkSuQmCC);
+    background-repeat: no-repeat;
+    background-position-x: 5px;
+    background-position-y: 1px;
+    padding-left: 14px;
+}
+
 /* /Menubar stuff                                                   */
 /********************************************************************/
+
+/********************************************************************/
+.eiseIntraForm  fieldset{
+    margin-top: 2em;
+    margin-left: 5px;
+    padding: 1%;
+    position: relative;
+    z-index: 0;
+}
+
+.eiseIntraForm legend{
+    position: absolute;
+    height: 1.4em;
+    line-height: 1.4em;
+    position: absolute;
+    top: -1.5em;
+    left: 0.5em;
+    z-index: 0;
+}
+
+.eiseIntraForm  div.eiseIntraField {
+    line-height: 1.5em;
+    overflow: hidden;
+}
+
+.eiseIntraForm  fieldset label,.eiseIntraForm  fieldset .eiseIntraValue {
+    display: inline-block;
+    vertical-align: middle;
+}
+
+.eiseIntraForm  label{
+    float: left;
+    clear: left;
+    cursor: default !important;
+    width: 23%;
+    padding-right: 1% !important;
+}
+
+.eiseIntraForm .eiseIntraValue{
+    clear: right;
+    width: 74%;
+}
+
+
+.eiseIntraLogData {
+    overflow: hidden;
+}
+
+.eiseIntraMultiple fieldset {
+    float: left;
+}
+.eiseIntraMultiple fieldset.eiseIntraMainForm {
+    width: 59%;
+}
+.eiseIntraMultiple fieldset.eiseIntraActions  {
+    width: 34.7%;
+}
+.eiseIntraMultiple input.eiseIntraRadio {
+    margin-left: 5% !important;
+}
+
+.eiseIntraActions input.eiseIntraRadio  {
+    margin-left: 20%;
+}
+.eiseIntraActions label.eiseIntraRadio  {
+    width: 70%;
+    float: none;
+    clear: right;
+    cursor: pointer;
+    display: inline-block;
+    padding-left: 1%;
+}
+
+.eiseIntraLogTitle {
+    overflow: hidden;
+}
+
+.eiseIntraLogStatus .eiseIntraLogTitle span{
+    float: left;
+    display: inline-block;
+}
+
+.eiseIntra_stlTitle {
+    font-size: 1.2em;
+    padding-right: 5%;
+}
+
+.eiseIntra_stlATA, .eiseIntra_stlATD {
+    padding: 0 1%;
+    overflow: visible;
+    font-weight: normal;
+    white-space: nowrap;
+}
+
+.eiseIntra_stlATA:after {
+    content: " - ";
+}
+
+/********************************************************************/
+
+/*************************************************/
+/* Comments                                      */
+textarea.eiseIntraComment {
+    width: 100%;
+}
+div.eiseIntraComment {
+    border-top: 1px solid #f4f4f4;
+}
+.eiseIntraComment_contols {
+   position: absolute;
+   display: none;
+   z-index: 100;
+}
+
+.eiseIntraComment_contols input{
+    width: 20px !important;
+    height: 20px !important;
+    padding: 0 !important;
+    border-left: 1px solid #f4f4f4;
+    border-top: 1px solid #f4f4f4;
+    border-right: 1px solid #d5d5d5;
+    border-bottom: 1px solid #d5d5d5;
+    border-radius: 2px;
+    display: none;
+}
+
+.eiseIntraComment_userstamp {
+   font-style: italic;
+   font-size: 90%;
+   color: buttonshadow;
+   width: auto;
+}
+
+

@@ -80,13 +80,27 @@ if ($dbName!="") {
     while($rwDB = $oSQL->fetch_array($rsDB)){
       $grid->Rows[] = $rwDB;
       //print_r($rwDB);
-       if ($rwDB["Name"]=="stbl_page") $arrFlags["hasPages"] = true;
-       if ($rwDB["Name"]=="stbl_entity") $arrFlags["hasEntity"] = true;
+        if ($rwDB["Name"]=="stbl_page") $arrFlags["hasPages"] = true;
+        if ($rwDB["Name"]=="stbl_entity") {
+            $arrFlags["hasEntity"] = true;
+        }
     }
+    $eiseIntraVersion = (int)$oSQL->d("SELECT MAX(fvrNumber) FROM `{$dbName}`.stbl_framework_version");
+    
+    
 $arrActions[]= Array ("title" => "Create table"
 	   , "action" => "javascript:CreateNewTable();"
-	   , "class" => "new"
+	   , "class" => "ss_add"
 	);
+
+if (isset($eiseIntraVersion) && $eiseIntraVersion < 100){
+    $arrActions[]= Array ("title" => "Upgrade eiseIntra"
+	   , "action" => "database_act.php?DataAction=upgrade&dbName=".urlencode($dbName)
+	   , "class" => "ss_wrench_orange "
+	);
+}   
+    
+    
 }
 
 
