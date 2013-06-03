@@ -127,9 +127,9 @@ case "Data":
         , 'type' => "num"
         );
         
-        for($i=0;$i<count($arrTable['columns']);$i++){
+        $i=0;
+        foreach($arrTable['columns'] as $col){
            $arrCol = Array();
-           $col = $arrTable['columns'][$i];
            $arrCol['title'] = $col["Field"];
            $arrCol['field'] = $col["Field"];
            $arrCol['filter'] = $col["Field"];
@@ -148,6 +148,7 @@ case "Data":
                     $arrCol['type'] = $col["DataType"];
            }
            $lst->Columns[] = $arrCol;
+           $i++;
         }
         
         $lst->handleDataRequest();
@@ -183,6 +184,10 @@ $arrActions[]= Array ("title" => "eiseGrid"
 	);
 $arrActions[]= Array ("title" => "phpList"
 	   , "action" => "codegen_form.php?dbName=$dbName&tblName=$tblName&toGen=phpList"
+	   , "class"=> "ss_script"
+	);
+$arrActions[]= Array ("title" => "eiseList"
+	   , "action" => "codegen_form.php?dbName=$dbName&tblName=$tblName&toGen=eiseList"
 	   , "class"=> "ss_script"
 	);
     

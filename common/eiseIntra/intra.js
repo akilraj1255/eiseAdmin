@@ -7,6 +7,25 @@ var isDateInputSupported = function(){
     return (elem.type == 'date' && elem.value != 'foo');
 }
 
+var convertDateForDateInput = function($eiForm, inp){
+    
+    var conf = $eiForm.data('eiseIntraForm').conf;
+    var strRegExDate = conf.dateFormat
+        .replace(new RegExp('\\.', "g"), "\\.")
+        .replace(new RegExp("\\/", "g"), "\\/")
+        .replace("d", "([0-9]{1,2})")
+        .replace("m", "([0-9]{1,2})")
+        .replace("Y", "([0-9]{4})")
+        .replace("y", "([0-9]{1,2})");
+    
+    var arrVal = inp.getAttribute('value').match(strRegExDate);
+    if (arrVal)
+        $(inp).val(arrVal[3]+'-'+arrVal[2]+'-'+arrVal[1]);
+    
+    return;
+
+}
+
 var setCurrentDate = function(oInp){
     
     var today = new Date();
@@ -57,14 +76,18 @@ init: function( options ) {
         
         $this.find('input.eiseIntraValue').each(function() {
             switch ($(this).attr('type')){ 
-                case "datetime":
                 case "date":
-                case "datetime-local":
                     if (isDateInputSupported()){
                         $(this).css('width', 'auto');
+                        convertDateForDateInput($this, this);
                     } else {
                         $(this).addClass('eiseIntra_'+$(this).attr('type'));
                     }
+                    $(this).attr('autocomplete', 'off');
+                    break;
+                case "datetime":        //not supported yet by any browser
+                case "datetime-local":  //not supported yet by any browser
+                    $(this).addClass('eiseIntra_'+$(this).attr('type'));
                     $(this).attr('autocomplete', 'off');
                     break;
                 case "number":
@@ -173,8 +196,10 @@ validate: function( ) {
         var strValue = $(this).val();
         var strType = $(this).attr('type');
         
-        if ($(this).attr('required')==='required' && $(this).val()===""){
-            alert(getFieldLabelText($(this))+" is mandatory");
+        var $inpToCheck = $(this).hasClass("eiseIntra_ajax_dropdown") ? $(this).prev("input") : $(this);
+        
+        if ($inpToCheck.attr('required')==='required' && $inpToCheck.val()===""){
+            alert(getFieldLabelText($inpToCheck)+" is mandatory");
             $(this).focus();
             canSubmit = false;
             return false; //break;
@@ -204,9 +229,9 @@ validate: function( ) {
                     (strType.match(/time/) ? strRegExTime : "")+"$";
                 
                 if (strValue!="" && strValue.match(new RegExp(strRegEx))==null){
-                    alert ("Field '"+getFieldLabelText($(this))+"' should contain "+(strType)+" value formatted as "+conf.dateFormat+
+                    alert ("Field '"+getFieldLabelText($(this))+"' should contain "+(strType)+" value formatted as \""+conf.dateFormat+
                     (strType.match(/time/) ? ' '+conf.timeFormat.replace('i', 'm') : "")+
-                    ".");
+                    "\".");
                     $(this).focus();
                     canSubmit = false;
                     return false;

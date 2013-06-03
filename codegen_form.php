@@ -413,6 +413,149 @@ include('../common/inc-frame_bottom.php');
         $strCode .= "?>";
         
         
+        break;      
+    case "eiseList":
+        
+        /*
+        echo"<pre>";
+        print_r($arrTable);
+        echo"</pre>";
+        die();
+        //*/
+        
+        if ($arrTable["hasActivityStamp"]){
+            //put changed date here
+           $strEditByField = $arrTable["prefix"]."EditDate";
+           
+           $strCodeEditBy .= "\$lst->Columns[] = array('title' => \"Updated\"\r\n";
+           $strCodeEditBy .= "        , 'type'=>\"date\"\r\n";
+           
+           $strCodeEditBy .= "        , 'field' => \"".$strEditByField."\"\r\n";
+           $strCodeEditBy .= "        , 'filter' => \"".$strEditByField."\"\r\n";
+           $strCodeEditBy .= "        , 'order_field' => \"".$strEditByField."\"\r\n";
+           $strCodeEditBy .= "        );\r\n";
+        }
+        
+        $strCode = "";
+        
+        $strCode .= "<?php\r\n".
+                "include(\"common/auth.php\");\r\n".
+                "//\$_DEBUG=true;\r\n".
+                "\$arrJS[] = commonStuffRelativePath.'eiseList/eiseList.js';\r\n".
+                "\$arrCSS[] = commonStuffRelativePath.'eiseList/themes/default/screen.css';\r\n".
+                "include_once(commonStuffAbsolutePath.'eiseList/inc_eiseList.php');\r\n\r\n";
+                
+        $strCode .= "\$listName = \$listName ? \$listName : \"".$arrTable['prefix']."\";\r\n".
+                "\$lst = new eiseList(\$oSQL, \$listName\r\n".
+                "    , Array('title'=>\$arrUsrData[\"pagTitle\$strLocal\"]\r\n".
+                "    , 'sqlFrom' => '{$arrTable["table"]}'\r\n".
+                "    , 'defaultOrderBy'=>'".($strEditByField ? $strEditByField : $arrTable["PK"][0])."'\r\n".
+                "    , 'defaultSortOrder'=>'".($strEditByField ? "DESC" : "ASC")."'\r\n".
+                "    , 'intra' => \$intra));\r\n\r\n";
+        
+        $strCode .= "\$lst->Columns[] = array('title' => \"\"\r\n".
+                "        , 'field' => '".implode("_", $arrTable['PK'])."'\r\n".
+                (count($arrTable['PK']) > 1 ? 
+                "        , 'sql' => \"CONCAT(".implode(", '_', ", $arrTable["PK"]).")\"\r\n" : "").        
+                "        , 'PK' => true\r\n".
+                "        );\r\n\r\n";
+        
+        $strCode .= "\$lst->Columns[] = array('title' => \"##\"\r\n".
+                "        , 'field' => \"phpLNums\"\r\n".
+                "        , 'type' => \"num\"\r\n".
+                "        );\r\n\r\n";
+                
+        foreach($arrTable['columns'] as $col){
+           if ($col["DataType"]=="binary")
+               continue;
+           if ($col["DataType"]=="activity_stamp")
+               continue;
+           
+           $field = $col["Field"];
+           $sql = $col["Field"];
+           
+           if ($col["DataType"]=="PK"){
+              $field = $field."_";
+           }
+           
+           $strCode .= "\$lst->Columns[] = array('title' => \$intra->translate(\"".($col["Comment"]!="" ? $col["Comment"] : $col["Field"])."\")\r\n";
+           
+           if ($col["DataType"]=="FK"){
+               if ( $col["ref_table"]!=""){
+                    $arrRefTable = $intra->getTableInfo("", $col["ref_table"]);
+                    $strCode .= "        , 'type' => \"combobox\"\r\n";
+                    $strCode .= "        , 'source_prefix' => \"{$arrRefTable["prefix"]}\"\r\n";
+                    $strCode .= "        , 'source' => \"{$col["ref_table"]}\"\r\n";
+                    $strCode .= "        , 'defaultText' => getTranslation(\"Any\")\r\n";
+                    $strCode .= "        , 'field' => \"{$col["Field"]}\"\r\n";
+                    $strCode .= "        , 'filter' => \"{$col["Field"]}\"\r\n";
+                    $strCode .= "        , 'order_field' => \"{$col["Field"]}_Text\"\r\n";
+                    $strCode .= "        );\r\n";
+                    continue;
+               } else {
+                    $strType="text";
+               }
+           }
+           
+           switch ($col["DataType"]){
+               case "datetime":
+                  $strType = "date";
+                  break;
+               case "real":
+                  $strType = "money";
+                  break;
+               case "integer":
+                  $strType = "numeric";
+                  break;
+               case "boolean":
+                    $strType = "boolean";
+                    break;
+               case "FK":
+                  $strType = ($col["ref_table"]!="" ? "combobox" : "text");
+                  break;
+               default:
+                  $strType = "text";
+                  break;
+           }
+           
+           $strCode .= "        , 'type'=>\"$strType\"\r\n";
+           
+           $strCode .= "        , 'field' => \"".$field."\"\r\n";
+           $strCode .= ($field != $sql
+                     ?  "        , 'sql' => \"".$sql."\"\r\n"
+                     : ""
+                    );
+           
+           $strCode .= "        , 'filter' => \"".$sql."\"\r\n";
+           $strCode .= "        , 'order_field' => \"".$field."\"\r\n";
+           
+           
+           
+           if(preg_match("/Title$/i", $field))
+              $strCode .= "        , 'width' => \"100%\"\r\n";
+           $strCode .= "        );\r\n";
+           
+        }
+        
+        $strCode .= $strCodeEditBy;
+        
+        $strCode .= "\r\n";
+        
+        $strCode .= "\$lst->handleDataRequest();\r\n\r\n";
+        
+        $strCode .= "if (\$intra->arrUsrData['FlagWrite']){\r\n";
+        $strCode .= "    \$arrActions[]= Array ('title' => \$intra->translate(\"New\")\r\n";
+        $strCode .= "       , 'action' => \"".(str_replace("tbl_", "", $tblName))."_form.php\"\r\n";
+        $strCode .= "       , 'class' => \"ss_add\"\r\n";
+        $strCode .= "    );\r\n";
+        $strCode .= "}\r\n\r\n";
+        
+        $strCode .= "include eiseIntraAbsolutePath.'inc-frame_top.php';\r\n\r\n";
+        $strCode .= "\$lst->show();\r\n\r\n";
+        $strCode .= "include eiseIntraAbsolutePath.'inc-frame_bottom.php';\r\n";
+        $strCode .= "?>";
+        
+        
         break;
     case "Form":
         //echo "<pre>";

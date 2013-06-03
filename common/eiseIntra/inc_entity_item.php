@@ -165,14 +165,20 @@ public function doFullAction($arrNewData = Array()){
         }
         
     }
-
+    
+    return ($this->arrAction["aclGUID"]);
+    
 }
 
 
-public function addAction(){
+public function addAction($arrAction = null){
     
     $usrID = $this->intra->usrID;
     $oSQL = $this->oSQL;
+    
+    if ($arrAction!==null){
+        $this->arrAction = $arrAction;
+    }
     
     // 1. obtaining aclGUID
     $this->arrAction["aclGUID"] = $oSQL->get_data($oSQL->do_query("SELECT UUID()"));
@@ -253,6 +259,46 @@ public function addAction(){
     }
     
 }
+
+public function findAction($aclOldStatusID, $aclNewStatusID, $aclActionID, $aclActionPhase = null){
+    
+    $arrACL = Array();
+    
+    $sqlACL = "SELECT * FROM stbl_action_log 
+        LEFT OUTER JOIN {$this->rwEnt["entTable"]}_log ON aclGUID=l{$this->entID}GUID
+        WHERE aclEntityItemID='{$this->entItemID}'
+        ".($aclOldStatusID!==null 
+            ? " AND aclOldStatusID".(is_array($aclOldStatusID)
+                ?  " IN (".implode(", ", $aclOldStatusID).")"
+                : "=".(int)$aclOldStatusID
+            ) 
+            : "").
+        ($aclNewStatusID!==null ? " AND aclNewStatusID".(is_array($aclNewStatusID)
+                ?  " IN (".implode(", ", $aclNewStatusID).")"
+                : "=".(int)$aclNewStatusID
+            ) 
+            : "").
+        ($aclActionID!==null 
+            ? " AND aclActionID".(is_array($aclActionID) 
+                ?  " IN (".implode(", ", $aclActionID).")"
+                : "=".(int)$aclActionID)
+            : "").
+        ($aclActionPhase!==null 
+            ? " AND aclActionPhase".(is_array($aclActionPhase) 
+                ?  " IN (".implode(", ", $aclActionPhase).")"
+                : "=".(int)$aclActionPhase)
+            : "")."
+        ORDER BY aclInsertDate DESC
+        ";
+        
+    $rsACL = $this->oSQL->q($sqlACL);
+    
+    while($rwACL = $this->oSQL->f($rsACL)){
+        $arrACL[] = $rwACL;
+    }
+    return $arrACL;
+}
+
 
 function finishAction(){
     $usrID = $this->intra->usrID;
@@ -614,11 +660,12 @@ function updateActionLog($arrNewData = Array()){
                         , $intra->getSQLValue(Array('Field'=>$strTimeStampInputID, 'DataType'=>"datetime")))."\"";
                     eval("\$newValue = ".$toEval.";");
                 } else { // if there's no timestamp, we try to update ACL timestamp basing on 
-                    $tsfieldsToSet .= "\r\n, acl{$arrAAT["aatFlagTimestamp"]}={$newValue}";
+                    if ($newValue!==null)
+                        $tsfieldsToSet .= "\r\n, acl{$arrAAT["aatFlagTimestamp"]}={$newValue}";
                 }
             }
             
-            if ($newValue!=null){
+            if ($newValue!==null){
                 $strEntityLogFldToSet .= ", l{$atrID} = {$newValue}";
             }
             

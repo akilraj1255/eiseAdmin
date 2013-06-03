@@ -1,77 +1,6 @@
 <?php
 include "common/auth.php";
 
-function parse_mysql_dump($url){
-    $file_content = file($url);
-    $query = "";
-	$delimiter = ";";
-    foreach($file_content as $sql_line){
-        if (!preg_match("/^\#/", $sql_line) )
-		    $query .= $sql_line;
-		if (preg_match("/^CREATE FUNCTION/i", $sql_line) )
-		    $delimiter = ";;";
-        if(preg_match("/$delimiter\s*$/", $sql_line)){
-		  //echo "--\r\n".$query."\r\n---";
-          $result = mysql_query($query)or die('Error: '.mysql_error());
-          $query = "";
-		  $delimiter = ";";
-        }
-    }
-}
-
-function rollDBSVFramework($dbName){
-    
-    GLOBAL $oSQL;
-    
-    $table = $oSQL->d("SHOW TABLES FROM `{$dbName}` LIKE 'stbl_framework_version'");
-    if (!$table) {
-        die("Framework DBSV roll-out not possible");
-    }
-    
-    $verNumber = $oSQL->d("SELECT MAX(fvrNumber) FROM `{$dbName}`.stbl_framework_version");
-    
-    $verNumber = (!$verNumber ? $verNumber=59 : $verNumber);
-    
-    $oSQL->q("USE `$dbName`");
-    
-    echo "Current DB Framework Schema Version number is #".sprintf("%03d",$verNumber)."\r\n";
-
-    $dh  = opendir(eiseIntraAbsolutePath.".SQL");
-        
-    $arrFiles = Array();
-        
-    while (false !== ($filename = readdir($dh))) {
-       if (preg_match("/^([0-9]{3}).+(\.sql)/",$filename, $arrMatch)){
-          $arrFiles[(integer)$arrMatch[1]] = $filename;
-       }
-    }
-
-    ksort($arrFiles);
-    end($arrFiles);
-    $newVerNo = key($arrFiles);
-    echo "New version number is going to be #".sprintf("%03d",$newVerNo)."\r\n";ob_flush();
-    if ($newVerNo<=$verNumber) 
-       die("Nowhere to update. Currenct DB framework version is bigger than this update.\r\n\r\n");ob_flush();
-
-
-    for ($i=($verNumber+1);$i<=$newVerNo;$i++){
-       if (!isset($arrFiles[$i]))
-           die("Cannot get SQL script for version #$i.");
-        $fileName = eiseIntraAbsolutePath.".SQL".DIRECTORY_SEPARATOR.$arrFiles[$i];
-       $fh = fopen($fileName, "r");
-       parse_mysql_dump($fileName);
-       mysql_query("INSERT INTO stbl_framework_version (fvrNumber, fvrDate, fvrDesc) VALUES ($i, NOW(),'".
-          mysql_escape_string(fread($fh, filesize($fileName)))."')");
-       echo "Version is now #".sprintf("%03d",$i)."\r\n";
-       fclose($fh);
-    }
-    
-    
-}
-
-
-
-
 set_time_limit(1200);
 ob_start();
 ob_implicit_flush(true);
@@ -536,6 +465,7 @@ break;
 case "upgrade":
 
     include eiseIntraAbsolutePath."inc_entity_item.php";
+    include eiseIntraAbsolutePath."inc_dbsv.php";
 
     set_time_limit(0);
 
@@ -543,8 +473,10 @@ case "upgrade":
     for ($i = 0; $i < ob_get_level(); $i++) { ob_end_flush(); }
     ob_implicit_flush(1);
     echo str_repeat(" ", 256)."<pre>"; ob_flush();
-
-    rollDBSVFramework($dbName);    
+    
+    $dbsv = new eiseDBSV($oSQL, '');
+    
+    $dbsv->ExecuteDBSVFramework($dbName);    
     
     die();
     
