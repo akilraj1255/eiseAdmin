@@ -17,7 +17,7 @@
 }
 
 .el_body {
-    background: url('bg_ios_light.png') !important;
+    background: #999 !important;
 }
 
 .el_table table {
@@ -31,7 +31,7 @@
     margin-top: 80px;
     padding-left: 15px;
     font-family: Tahoma, Helvetica, sans-serif;
-    font-size: 8pt;
+    font-size: 9pt;
     text-shadow: #ccc -1px -1px 0px;
 }
 .el_notfound {
@@ -40,14 +40,15 @@
     margin-top: 80px;
     padding-left: 15px;
     font-family: Tahoma, Helvetica, sans-serif;
-    font-size: 8pt;
+    font-weight: bold;
+    font-size: 9pt;
     text-shadow: #ccc -1px -1px 0px;
 }
 
 .eiseList thead th
 , .eiseList thead td {
-    background: #99b4d1;
-    border-right: 1px solid #eee;
+    background-color: #000066;
+    border-right: 1px solid #006;
 }
 
 .eiseList thead input 
@@ -59,17 +60,23 @@
 .el_filter {    font-size: 9pt;}
 input.el_filter {   padding: 0 5px !important;}
 
-.el_sorted_asc  div { padding-left: 10px; background: url("arr_asc.png") no-repeat -2px center transparent !important; font-weight: bold;}
-.el_sorted_desc  div { padding-left: 10px; background: url("arr_desc.png") no-repeat -2px center transparent !important; font-weight: bold;}
+
+
+.el_sorted_asc  div:before, .el_sorted_asc  div:after { 
+    content: " \25b2  ";
+}
+.el_sorted_desc  div:before, .el_sorted_desc  div:after { 
+    content: " \25bc  ";
+}
 
 .eiseList th {
-    color: CaptionText;
+    color: #FFFFFF;
     text-align: center;
     padding: 5px 10px !important;
-    font-family: Lucida, Verdana, Helvetica, sans-serif;
-    font-size: 12px;
-    font-weight: normal;
-    text-shadow: #ccc -1px -1px 0px;
+    font-family: Tahoma,sans-serif;
+    font-size: 11px;
+    font-weight: bold;
+    text-shadow: #000 1px 1px 0px;
 }
 
 .el_tr0 { background-color: #F0F0F0; }
@@ -77,15 +84,16 @@ input.el_filter {   padding: 0 5px !important;}
 .el_tr_selected { background-color: InfoBackground; }
 
 .eiseList tbody td {
-    border-right: 1px solid #eee;
-    border-bottom: 1px solid #eee;
+    border-right: 1px solid #000;
+    border-bottom: 1px solid #000;
     background: transparent;
     padding-left: 4px;
     padding-top: 2px;
     padding-right: 4px;
     padding-bottom: 0px;
-    font-size: 9pt;
-    height: 14pt;
+    font-family: Tahoma,sans-serif;
+    font-size: 8.5pt;
+    height: 13pt;
 }
 
 tr.el_selected {
