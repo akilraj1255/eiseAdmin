@@ -134,6 +134,17 @@ $grid->Execute();
 </td>
 <tr>
 <?php
+} else {
+?>
+<tr>
+<td>
+<span class="field_title_top">Admin's password:</span>
+<input type="password" name="usrPass" value=""><br>
+
+<input type="checkbox" name="flagRun" id="flagRun" style="width:auto;"><label for="flagRun">Run query?</label><br>
+</td>
+</tr>
+<?php
 }
 ?>
 <tr>
