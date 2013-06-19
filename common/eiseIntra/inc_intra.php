@@ -281,7 +281,7 @@ function readSettings(){
     
     $arrSetup = Array();
     
-    $sqlSetup = "SELECT * FROM tbl_setup";
+    $sqlSetup = "SELECT * FROM stbl_setup";
 
     $rsSetup = $oSQL->do_query($sqlSetup);
 

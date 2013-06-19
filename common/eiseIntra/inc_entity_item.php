@@ -55,7 +55,7 @@ function getEntityItemData(){
     
     $rwEnt = $oSQL->fetch_array($rsEnt);
     
-    $this->rwEnt = array_merge($rwEnt, $this->rwEnt);
+    $this->rwEnt = array_merge($this->rwEnt, $rwEnt);
     
 }
 
@@ -121,9 +121,14 @@ public function doSimpleAction($arrNewData){
     $this->addAction();
     $this->finishAction();
     
+    unset($this->arrAction);
+    unset($this->arrNewData);
+    $this->getEntityItemData();
+    
 }
 
-
+// updates Master Table, Action Log, and add/start/finish/cancel action mentioned in arrNewData[aclToDo]
+// returns aclGUID of performed action
 public function doFullAction($arrNewData = Array()){
     
     if (count($arrNewData)>0){
@@ -136,7 +141,7 @@ public function doFullAction($arrNewData = Array()){
     }
     
     // proceed the action
-    if ($this->arrAction["actFlagAutocomplete"]){
+    if ($this->arrAction["actFlagAutocomplete"] && $this->arrAction["aclGUID"]==""){
         
         $this->checkMandatoryFields();
         $this->addAction();
@@ -166,11 +171,18 @@ public function doFullAction($arrNewData = Array()){
         
     }
     
-    return ($this->arrAction["aclGUID"]);
+    $aclGUID = $this->arrAction["aclGUID"];
+    
+    unset($this->arrAction);
+    unset($this->arrNewData);
+    $this->getEntityItemData();
+    
+    return $aclGUID;
     
 }
 
-
+// adds record to stbl_action_log, {entTable}_log with initial data from Master Table
+// returns aclGUID
 public function addAction($arrAction = null){
     
     $usrID = $this->intra->usrID;
@@ -181,7 +193,7 @@ public function addAction($arrAction = null){
     }
     
     // 1. obtaining aclGUID
-    $this->arrAction["aclGUID"] = $oSQL->get_data($oSQL->do_query("SELECT UUID()"));
+    $this->arrAction["aclGUID"] = $oSQL->d("SELECT UUID()");
      
     // 2. insert new ACL
     $sqlInsACL = "INSERT INTO `stbl_action_log`
@@ -258,6 +270,8 @@ public function addAction($arrAction = null){
         $oSQL->do_query($sqlInsATV);
     }
     
+    return $this->arrAction["aclGUID"];
+    
 }
 
 public function findAction($aclOldStatusID, $aclNewStatusID, $aclActionID, $aclActionPhase = null){
@@ -306,7 +320,7 @@ function finishAction(){
        
     if ($this->arrAction["aclActionPhase"]=="0")
         if (!$this->checkCanStart()){
-            throw new Exception("Action '{$this->arrAction["actTitle"]}' cannot be started for {$this->entItemID} because of its status ({$this->arrAction["rwEnt"][$this->entID."StatusID"]})");
+            throw new Exception("Action '{$this->arrAction["actTitle"]}' cannot be started for {$this->entItemID} because of its status ({$this->rwEnt[$this->entID."StatusID"]})");
             return false;
         }
     
@@ -329,23 +343,19 @@ function finishAction(){
         $oSQL->do_query($sqlUpdEntTable);
     }
     
-    // update master table by attrbutes, if actFlagAutocomplete is not set
-    if (!$this->arrAction["actFlagAutocomplete"]){
-        
-        if (count($this->arrAction["AAT"])>0){
-            $sqlUpdMaster = "UPDATE {$this->rwEnt["entTable"]} SET 
-                {$this->entID}EditBy='{$this->intra->usrID}', {$this->entID}EditDate=NOW()";
-            foreach($this->arrAction["AAT"] as $atrID=>$xx){
-                $sqlUpdMaster .= "\r\n, {$atrID} = (SELECT l{$atrID} FROM {$this->rwEnt["entTable"]}_log WHERE l{$this->entID}GUID='{$this->arrAction["aclGUID"]}')";
-            }
-            $sqlUpdMaster .= "\r\nWHERE {$this->entID}ID='{$this->entItemID}'";
-            $oSQL->do_query($sqlUpdMaster);
+    // update master table by attrbutes
+    if (count($this->arrAction["AAT"])>0){
+        $sqlUpdMaster = "UPDATE {$this->rwEnt["entTable"]} SET 
+            {$this->entID}EditBy='{$this->intra->usrID}', {$this->entID}EditDate=NOW()";
+        foreach($this->arrAction["AAT"] as $atrID=>$xx){
+            $sqlUpdMaster .= "\r\n, {$atrID} = (SELECT l{$atrID} FROM {$this->rwEnt["entTable"]}_log WHERE l{$this->entID}GUID='{$this->arrAction["aclGUID"]}')";
         }
+        $sqlUpdMaster .= "\r\nWHERE {$this->entID}ID='{$this->entItemID}'";
+        $oSQL->do_query($sqlUpdMaster);
     }
     
     //echo "<pre>";
     //print_r($this->arrNewData);
-    //print_r($this->arrAction);
     
     // if status is changed or action requires status stay interruption, we insert status log entry and update master table
     if (((string)$this->arrAction["aclOldStatusID"]!=(string)$this->arrAction["aclNewStatusID"] 
@@ -432,7 +442,7 @@ function finishAction(){
     }
 }
 
-private function collectActionData(){
+public function collectActionData(){
     
     $oSQL = $this->oSQL;
     $this->arrAction = Array();
@@ -481,11 +491,15 @@ private function collectActionData(){
     
     $this->arrAction["AAT"] = $this->getActionAttribute($rwACT["actID"]);
     
-    $this->arrAction["aclOldStatusID"] = isset($this->arrNewData["aclOldStatusID"]) ? $this->arrNewData["aclOldStatusID"] : $this->rwEnt["{$this->entID}StatusID"];
+    $this->arrAction["aclOldStatusID"] = isset($this->arrNewData["aclOldStatusID"]) 
+        ? $this->arrNewData["aclOldStatusID"] 
+        : ($this->arrNewData["aclGUID"] 
+            ? $rwACT["aclOldStatusID"] 
+            : $this->rwEnt["{$this->entID}StatusID"]);
     $this->arrAction["aclNewStatusID"] = isset($this->arrNewData["aclNewStatusID"]) ? $this->arrNewData["aclNewStatusID"] : $rwACT["aclNewStatusID"];
     $this->arrAction["aclComments"] = $this->arrNewData["aclComments"];
     
-    $this->arrAction = array_merge($this->arrAction, $rwACT);
+    $this->arrAction = array_merge($rwACT, $this->arrAction);
     
     foreach($this->arrAction["AAT"] as $atrID => $rwAAT){
         // define attributes for timestamp
@@ -660,8 +674,12 @@ function updateActionLog($arrNewData = Array()){
                         , $intra->getSQLValue(Array('Field'=>$strTimeStampInputID, 'DataType'=>"datetime")))."\"";
                     eval("\$newValue = ".$toEval.";");
                 } else { // if there's no timestamp, we try to update ACL timestamp basing on 
-                    if ($newValue!==null)
+                    if ($newValue!==null){
                         $tsfieldsToSet .= "\r\n, acl{$arrAAT["aatFlagTimestamp"]}={$newValue}";
+                        if($arrACL["actFlagDepartureEqArrival"] && $arrAAT["aatFlagTimestamp"]=="ATA"){
+                            $tsfieldsToSet .= "\r\n, aclATD={$newValue}";
+                        }
+                    }
                 }
             }
             
@@ -692,7 +710,6 @@ function updateActionLog($arrNewData = Array()){
            , aclEditDate=NOW()
            {$tsfieldsToSet}
            WHERE aclGUID='{$aclGUID}'";
-        
     }
     
     for($i=0;$i<count($sqlToTrack);$i++){

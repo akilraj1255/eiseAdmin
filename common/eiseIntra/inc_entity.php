@@ -70,7 +70,7 @@ protected function collectDataAttributes(){
         ".($this->staID!=="" 
             ? "LEFT OUTER JOIN stbl_status_attribute ON satStatusID=".$this->oSQL->e($this->staID)." AND satAttributeID=atrID AND satEntityID=atrEntityID" 
             : "")."
-        WHERE atrEntityID=".$this->oSQL->e($this->entID)." 
+        WHERE atrEntityID=".$this->oSQL->e($this->entID)." AND atrFlagDeleted=0
         ORDER BY atrOrder ASC";
     $rsAtr = $this->oSQL->q($sqlAtr);
     while ($rwAtr = $this->oSQL->f($rsAtr)){
