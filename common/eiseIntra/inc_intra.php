@@ -254,6 +254,8 @@ function checkLanguage(){
 
 function translate($key){
     
+    $key = addslashes($key);
+    
     if (!isset($this->lang[$key]) && $this->conf['collect_keys'] && $this->local){
         $this->addTranslationKey($key);
     }
@@ -770,7 +772,7 @@ function getMultiPKCondition($arrPK, $strValue){
     $arrValue = explode("##", $strValue);
     $sql_ = "";
     for($jj = 0; $jj < count($arrPK);$jj++)
-        $sql_ .= ($sql_!="" ? " AND " : "").$arrPK[$jj]."='".$arrValue[$jj]."'";
+        $sql_ .= ($sql_!="" ? " AND " : "").$arrPK[$jj]."=".$this->oSQL->e($arrValue[$jj])."";
     return $sql_;
 }
 
