@@ -5,9 +5,9 @@ $DataAction = $_GET["DataAction"] ? $_GET["DataAction"] : $_POST["DataAction"];
 $dbName = $_GET["dbName"] ? $_GET["dbName"] : $_POST["dbName"];
 $oSQL->dbname = $dbName;
 
-include '../common/eiseGrid/inc_eiseGrid.php';
-$arrJS[] = '../common/eiseGrid/eiseGrid.js';
-$arrCSS[] = '../common/eiseGrid/eiseGrid.css';
+include commonStuffAbsolutePath.'eiseGrid/inc_eiseGrid.php';
+$arrJS[] = commonStuffRelativePath.'eiseGrid/eiseGrid.js';
+$arrCSS[] = commonStuffRelativePath.'eiseGrid/eiseGrid.css';
 
 $gridSTR = new easyGrid($oSQL
         ,'str'

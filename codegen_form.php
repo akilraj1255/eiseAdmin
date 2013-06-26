@@ -566,7 +566,7 @@ include('../common/inc-frame_bottom.php');
         foreach($arrTable["PK"] as $pk){
             $strCode .= "\${$pk}  = (isset(\$_POST['{$pk}']) ? \$_POST['{$pk}'] : \$_GET['{$pk}'] );\r\n";
             $pkCond .= ($pkCond!="" ? " AND " : "")."`{$pk}` = \".\$oSQL->e(\${$pk}).\"";
-            $pkURI .= ($pkURI!="" ? "&" : "")."{$pk}`=\".urlencode(\${$pk}).\"";
+            $pkURI .= ($pkURI!="" ? "&" : "")."{$pk}=\".urlencode(\${$pk}).\"";
         }
         $strCode .= "\$DataAction  = (isset(\$_POST['DataAction']) ? \$_POST['DataAction'] : \$_GET['DataAction'] );\r\n\r\n";
         
