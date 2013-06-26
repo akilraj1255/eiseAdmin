@@ -6,9 +6,6 @@ function __construct($oSQL
     , $arrConfig
     ){
     
-	GLOBAL $strLocal;
-	GLOBAL $intra;
-	
     $this->conf = Array(                    //defaults for eiseGrid
         'titleDel' => "Del" // column title for Del
         , "titleAdd" => "Add >>" // column title for Add
@@ -33,19 +30,14 @@ function __construct($oSQL
 	$this->oSQL = $oSQL;
     $this->permissions = $this->conf["arrPermissions"];
     
-	$this->conf["local"] = (is_object($intra) ? $intra->local : $strLocal);
-    $this->intra = $intra;
-	
     //backward-compatibility staff
     $this->permissions["FlagDelete"] = (isset($this->conf['flagNoDelete']) ? !$this->conf['flagNoDelete'] : $this->permissions["FlagDelete"]);
     $this->permissions["FlagWrite"] = (isset($this->conf['flagDisabled']) ? !$this->conf['flagDisabled'] : $this->permissions["FlagWrite"]);
     
-	
-	
 }
 
 
-function Execute($sqlFrom="", $sqlWhere="", $strOrder="", $allowEdit=true) {
+function Execute($allowEdit=true) {
 	
     GLOBAL $_DEBUG;
     GLOBAL $strLocal;
@@ -53,8 +45,11 @@ function Execute($sqlFrom="", $sqlWhere="", $strOrder="", $allowEdit=true) {
     $oSQL=$this->oSQL;
    
     $strRet = "<div class=\"eiseGrid\" id=\"{$this->name}\">\r\n";
-       
-    if (!empty($this->conf['controlBarButtons']) && $this->permissions["FlagWrite"]){
+    
+    if (!$allowEdit)
+        $this->permissions["FlagWrite"] = false;
+    
+    if ($this->permissions["FlagWrite"]  && !empty($this->conf['controlBarButtons'])){
         
         $arrButtons = explode("|", $this->conf['controlBarButtons']);
         
@@ -311,10 +306,16 @@ function paintCell($col, $ixCol, $ixRow, $rowID=""){
             $val = $this->DateSQL2PHP($val, $this->conf['dateFormat']." ".$this->conf['timeFormat']);
             break;
         case "money":
-        case "numeric":
         case "float":
         case "double":
-            $cell['decimalPlaces'] = isset($cell['decimalPlaces']) ? $cell['decimalPlaces'] : $this->conf['decimalPlaces'];
+        case "numeric":
+        case "number":
+        case "integer":
+            $cell['decimalPlaces'] = isset($cell['decimalPlaces']) 
+                ? $cell['decimalPlaces'] 
+                : (in_array($cell['type'], Array('numeric','number','integer')) 
+                    ? 0
+                    : $this->conf['decimalPlaces']);
             $val = round($val, $cell['decimalPlaces']);
             $val = number_format($val, $cell['decimalPlaces'], $this->conf['decimalSeparator'], $this->conf['thousandsSeparator']);
             break;
@@ -323,7 +324,7 @@ function paintCell($col, $ixCol, $ixRow, $rowID=""){
     }
     
     //if cell is disabled, static, or there's a HREF, we make hidden input and text value
-    if ((int)$cell['static'] || (int)$cell['disabled'] || $cell['href']!="" || !$this->permissions["FlagWrite"]){
+    if ((int)$cell['static'] || (int)$cell['disabled'] || $cell['href']!=""){
         
         $aopen = "";$aclose = "";
         if ($cell['href']!=""){
@@ -338,7 +339,6 @@ function paintCell($col, $ixCol, $ixRow, $rowID=""){
                 $strCell .= "<input type=\"checkbox\" name=\"{$field}_chk[]\"".($val==true ? " checked" : "")." disabled>";
                 break;
             case "combobox":
-			case "ajax_dropdown":
                 $strCell .= "<div>".$aopen.$this->getSelectValue($cell, $row).$aclose."</div>";
                 break;
             case "textarea":
@@ -386,9 +386,7 @@ function paintCell($col, $ixCol, $ixRow, $rowID=""){
             case "ajax_dropdown":
                 $strCell .= "<input type=\"hidden\" name=\"{$field}[]\" value=\"".htmlspecialchars($val)."\">";
                 $strCell .= "<input type=\"text\" name=\"{$field}_text[]\"".
-                    " src=\"{table:'{$col['source']}', prefix:'{$col['prefix']}'".
-                        ($col['showDeleted'] ? ', showDeleted:1' : '').
-                        "}\" autocomplete=\"off\"".
+                    " src=\"{table:'{$col['source']}', prefix:''}\" autocomplete=\"off\"".
                     " value=\"".$this->getSelectValue($cell, $row)."\">";
             case "del":
                 break;
@@ -429,16 +427,10 @@ function getSelectValue($cell, $row){
 
 function getDataFromCommonViews($oSQL, $strValue, $strText, $strTable, $strPrefix){
 
+    GLOBAL $strLocal;
     
-    if (is_object($this->intra)) {//if we under intra environment
-        return ($this->intra->getDataFromCommonViews($strValue, $strText, $strTable, $strPrefix));
-    } else {
-        if (function_exists("getDataFromCommonViews")) // normally defined in common.php
-            return (getDataFromCommonViews($oSQL, $strValue, $strText, $strTable, $strPrefix));
-	}
-    $oSQL = $this->oSQL;
-	
-    $strLocal = $this->conf['local'];
+    if (function_exists("getDataFromCommonViews")) // normally defined in common.php
+        return (getDataFromCommonViews($oSQL, $strValue, $strText, $strTable, $strPrefix));
     
     if ($strPrefix!=""){
         $arrFields = Array(
@@ -495,21 +487,14 @@ function datePHP2SQL($dtVar, $valueIfEmpty="NULL"){
 
 function Update($flagExecute = true){
 	
+    GLOBAL $usrID;
+    
     $sql = Array();
     
     $oSQL=$this->oSQL;
     $tblName = $this->conf['strTable'];
     
-    if (is_object($this->intra)) {//if we under intra environment
-        $arrTable = $this->intra->getTableInfo($oSQL->dbName, $tblName);
-        $usrID = $intra->usrID;
-    } else {
-        GLOBAL $usrID;
-        if (function_exists("getTableInfo")) { // normally defined in common.php
-            $arrTable = getTableInfo($oSQL->dbName, $tblName);
-        } else 
-            throw new Exception ("Unable to update: getTableInfo function not found");
-    }
+    $arrTable = $this->getTableInfo($oSQL->dbName, $tblName);
     
     $arrFields = Array();
     $arrValues = Array();
@@ -535,14 +520,14 @@ function Update($flagExecute = true){
         if ($col['mandatory'])
             $mndFieldName = $col["field"];
         
-        foreach($arrTable["columns"] as $j=>$field) 
+        foreach($arrTable["columns"] as $j=>$tCol) 
             if (!$col['disabled'] && ($col['type']!="row_id")  && $col['field'] == $arrTable["columns"][$j]["Field"]){
                 $arrFields[] = $col['field'];
-                $field['DataType'] = ($col['type']=="combobox" || $col['type']=="ajax_dropdown" 
+                $arrTable["columns"][$j]['DataType'] = ($col['type']=="combobox" || $col['type']=="ajax_dropdown" 
                     ? "combobox" 
-                    : $field['DataType']);
-                $arrValues[] = $this->getSQLValue($field, true);
-                $arrFieldsValues[] = $col['field'] ." = ".$this->getSQLValue($field, true);
+                    : $arrTable["columns"][$j]['DataType']);
+                $arrValues[] = $this->getSQLValue($arrTable["columns"][$j], true);
+                $arrFieldsValues[] = $col['field'] ." = ".$this->getSQLValue($arrTable["columns"][$j], true);
             }
     }
     
@@ -569,10 +554,7 @@ function Update($flagExecute = true){
     
     for ($i=0;$i<count($arrToDelete);$i++)
         if ($arrToDelete[$i]!="") {
-            $cond = (is_object($this->intra) 
-                ? $this->intra->getMultiPKCondition($arrTable['PK'], $arrToDelete[$i])
-                : getMultiPKCondition($arrTable['PK'], $arrToDelete[$i]));
-            $sql[] = "DELETE FROM $tblName WHERE ".$cond;
+            $sql[] = "DELETE FROM $tblName WHERE ".$this->getMultiPKCondition($arrTable['PK'], $arrToDelete[$i]);
         }
     
     // running thru updated
@@ -585,12 +567,9 @@ function Update($flagExecute = true){
                      "              ".implode("\r\n              , ", $arrValues)."
                   )\";");
             } else { //if updated
-                $cond = (is_object($this->intra) 
-                    ? $this->intra->getMultiPKCondition($arrTable['PK'], $_POST[$pkColName][$i])
-                    : getMultiPKCondition($arrTable['PK'], $_POST[$pkColName][$i]));
                 eval("\$sql[] = \"UPDATE $tblName SET
                   ".implode("\r\n                  , ", $arrFieldsValues)."\r\n".
-                  "           WHERE ".$cond."\";");
+                  "           WHERE ".$this->getMultiPKCondition($arrTable['PK'], $_POST[$pkColName][$i])."\";");
             }
         }
 
@@ -783,6 +762,38 @@ function Update_Intra($flagExecute = true){
     
     
 	return(true);
+}
+
+private function getMultiPKCondition($arrPK, $strValue){
+    
+    GLOBAL $intra;
+    
+    if (is_object($intra))
+        return $intra->getMultiPKCondition($arrPK, $strValue);
+    else 
+        if (function_exists('getMultiPKCondition')){
+            return getMultiPKCondition($arrPK, $strValue);
+        }
+        
+    $arrValue = explode("##", $strValue);
+    $sql_ = "";
+    for($jj = 0; $jj < count($arrPK);$jj++)
+        $sql_ .= ($sql_!="" ? " AND " : "").$arrPK[$jj]."='".$arrValue[$jj]."'";
+    return $sql_;
+    
+}
+
+private function getTableInfo($dbName, $tableName){
+    GLOBAL $intra;
+    
+    if (is_object($intra))
+        return $intra->getTableInfo($dbName, $tableName);
+    else 
+        if (function_exists('getTableInfo')){
+            return getTableInfo($dbName, $tableName);
+        }
+        
+        throw new Exception('Unable to retrieve table information using "getTableInfo()" function');
 }
 
 

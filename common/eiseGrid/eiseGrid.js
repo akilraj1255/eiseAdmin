@@ -221,7 +221,10 @@ eiseGrid.prototype.attachDatepicker = function(oTr){
 eiseGrid.prototype.attachAutocomplete = function(oTr) {
     try {
       $(oTr).find(".eg_ajax_dropdown input[type=text]").each(function(){
-		var data = $(this).attr('src');
+		
+        var inp = this;
+        
+        var data = $(this).attr('src');
 		eval ("var arrData="+data+";");
 		var table = arrData.table;
 		var prefix = arrData.prefix;
@@ -229,30 +232,65 @@ eiseGrid.prototype.attachAutocomplete = function(oTr) {
 		var url = 'ajax_dropdownlist.php?table='+table+"&prefix="+prefix+
             (showDeleted!=undefined ? "&showDeleted="+showDeleted : "");
 		
-		$(this).autocomplete(url, {
-			width: 300,
-			multiple: false,
-			matchContains: true,
-			minChars: 3,
-            dataType: 'json',
-			//formatResult: function(row) {return row[0].replace(/(<.+?>)/gi, '');},
-            parse: function(data) {
-                var parsed = [];
-                arrParse = data.data;
-                if (arrParse===null) {
-                       arrParse = [];
+        if (typeof(jQuery.ui) != 'undefined') { // jQuery UI autocomplete conflicts with old-style BGIframe autocomplete
+            $(this).autocomplete({
+                source: function(request,response) {
+                    
+                    var extra = $(inp).attr('extra');
+                    var urlFull = url+"&q="+encodeURIComponent(request.term)+(extra!=undefined ? '&e='+encodeURIComponent(extra) : '');
+                    
+                    $.getJSON(urlFull, function(response_json){
+                        
+                        response($.map(response_json.data, function(item) {
+                                return {  label: item.optText, value: item.optValue  }
+                            }));
+                        });
+                        
+                    },
+                minLength: 3,
+                focus: function(event,ui) {
+                    event.preventDefault();
+                    if (ui.item){
+                        $(inp).val(ui.item.label);
+                    } 
+                },
+                select: function(event,ui) {
+                    event.preventDefault();
+                    if (ui.item){
+                        $(inp).val(ui.item.label);
+                        $(inp).prev("input").val(ui.item.value);
+                    } else 
+                        $(inp).prev("input").val("");
                 }
-                for (var i = 0; i < arrParse.length; i++) {
-                    parsed[parsed.length] = {
-                            data: arrParse[i],
-                            value: arrParse[i].optText,
-                           result: arrParse[i].optText
-                    };
-                }
-               return parsed;
-            },
-            formatItem: function(item) { return item.optText; }
-		});
+    		});
+        } else { //...old-style BGIframe autocomplete
+            $(this).autocomplete(url, {
+    			width: 300,
+    			multiple: false,
+    			matchContains: true,
+    			minChars: 3,
+                dataType: 'json',
+    			//formatResult: function(row) {return row[0].replace(/(<.+?>)/gi, '');},
+                parse: function(data) {
+                    var parsed = [];
+                    arrParse = data.data;
+                    if (arrParse===null) {
+                           arrParse = [];
+                    }
+                    for (var i = 0; i < arrParse.length; i++) {
+                        parsed[parsed.length] = {
+                                data: arrParse[i],
+                                value: arrParse[i].optText,
+                               result: arrParse[i].optText
+                        };
+                    }
+                   return parsed;
+                },
+                formatItem: function(item) { return item.optText; }
+    		});
+        }
+        
+		
 		$(this).result(function(event, data, formatted) {
 			if (data){
 				$(this).prev("input").val(data.optValue);

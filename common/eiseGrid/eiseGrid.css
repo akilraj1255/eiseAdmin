@@ -1,4 +1,6 @@
 .eiseGrid {
+    
+    position: relative;
     font-family: Tahoma;
     box-sizing: border-box;
     -moz-box-sizing:  border-box;
@@ -24,7 +26,6 @@
     font-weight: normal; 
     text-align: center;
     padding: 5px 10px;
-    text-shadow: #ccc -1px -1px 0px;
 }
 
 .eiseGrid td {
