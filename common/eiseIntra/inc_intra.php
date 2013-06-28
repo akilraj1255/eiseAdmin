@@ -409,10 +409,12 @@ function showTextArea($strName, $strValue, $arrConfig=Array()){
     } else {
         $strRet = "<div id=\"span_{$strName}\"".
             ($strAttrib ? " ".$strAttrib : "").
-            $strClass.">".
-            htmlspecialchars($strValue)."</div>\r\n".
-            "<input type=\"hidden\" name=\"{$strName}\" id=\"{$strName}\"".
-            " value=\"".htmlspecialchars($strValue)."\" />\r\n";
+            $strClass.">"
+                .($arrConfig['href'] ? "<a href=\"{$arrConfig['href']}\"".($arrConfig["target"] ? " target=\"{$arrConfig["target"]}\"" : '').">" : '')
+                .htmlspecialchars($strValue)."</div>\r\n"
+                .($arrConfig['href'] ? '</a>' : '')
+            ."<input type=\"hidden\" name=\"{$strName}\" id=\"{$strName}\""
+            ." value=\"".htmlspecialchars($strValue)."\" />\r\n";
     }
     return $strRet;        
     
@@ -453,7 +455,11 @@ function showCombo($strName, $strValue, $arrOptions, $arrConfig=Array()){
         }
         $valToShow=($valToShow!="" ? $valToShow : $arrConfig["strZeroOptnText"]);
         
-        $retVal = "<div id=\"span_{$strName}\"{$strClass}>".htmlspecialchars($valToShow)."</div>\r\n".
+        $retVal = "<div id=\"span_{$strName}\"{$strClass}>"
+            .($arrConfig['href'] ? "<a href=\"{$arrConfig['href']}\"".($arrConfig["target"] ? " target=\"{$arrConfig["target"]}\"" : '').">" : '')
+            .htmlspecialchars($valToShow)
+            .($arrConfig['href'] ? '</a>' : '')
+            ."</div>\r\n".
         "<input type=\"hidden\" name=\"{$strName}\" id=\"{$strName}\"".
         " value=\"".htmlspecialchars($textToShow)."\" />\r\n";
         
@@ -542,7 +548,11 @@ function showAjaxDropdown($strFieldName, $strValue, $arrConfig) {
                 , "strAttrib" => $arrConfig["strAttrib"]." src=\"{table:'{$arrConfig["strTable"]}', prefix:'{$arrConfig["strPrefix"]}'}\" autocomplete=\"off\""
                 , "class" => array_merge($arrConfig["class"], Array("eiseIntra_ajax_dropdown"))));
     } else {
-        $strOut .= "<div id=\"span_{$strFieldName}\"{$strClass}>".htmlspecialchars($arrConfig["strText"])."</div>\r\n";
+        $strOut .= "<div id=\"span_{$strFieldName}\"{$strClass}>"
+            .($arrConfig['href'] ? "<a href=\"{$arrConfig['href']}\"".($arrConfig["target"] ? " target=\"{$arrConfig["target"]}\"" : '').">" : '')
+            .htmlspecialchars($arrConfig["strText"])
+            .($arrConfig['href'] ? "</a>" : '')
+            ."</div>\r\n";
     }
     
     return $strOut;
