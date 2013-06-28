@@ -58,8 +58,8 @@ function eiseGrid(gridDIV){
         })
     }) 
     
-    this.tbody.find('.eg_checkbox input').bind('click', function(){
-        if($(this).attr('checked')=="checked")
+    this.tbody.find('.eg_checkbox input').bind('change', function(){
+        if(this.checked)
             $(this).prev('input').val('1');
         else 
             $(this).prev('input').val('0');

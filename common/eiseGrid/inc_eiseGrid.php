@@ -269,7 +269,13 @@ function paintCell($col, $ixCol, $ixRow, $rowID=""){
             $cell['class'] = str_replace("[{$rowKey}]", $rowValue, $cell['class']);
             $cell['static'] = (is_string($cell['static']) ? str_replace("[{$rowKey}]", $rowValue, $cell['static']) : $cell['static']);
             $cell['disabled'] = (is_string($cell['disabled']) ? str_replace("[{$rowKey}]", $rowValue, $cell['disabled']) : $cell['disabled']) ;
-            $cell['href'] = (empty($val) ? "" : str_replace("[{$rowKey}]", urlencode($rowValue), $cell['href'])) ;
+            if ($col['href'])
+                $cell['href'] = (strpos($cell['href'], "[{$rowKey}]")
+                    ? (empty($val)||empty($rowValue) 
+                        ? "" 
+                        : str_replace("[{$rowKey}]", urlencode($rowValue), $cell['href']))
+                    : $cell['href']
+                );
         }
     
     if ((int)$cell['disabled'])
