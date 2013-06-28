@@ -118,11 +118,12 @@ $(document).ready(function(){
 
 <h1>Entities</h1>
 
-<div class="panel">
-<table width="100%">
 <form action="<?php  echo $_SERVER["PHP_SELF"] ; ?>" method="POST">
 <input type="hidden" name="DataAction" value="update">
 <input type="hidden" name="dbName" value="<?php  echo $dbName ; ?>">
+
+<div class="panel">
+<table width="100%">
 <tr>
 <td>
 
@@ -142,7 +143,9 @@ $gridENT->Execute();
 <td align="center"><input type="submit" value="Save"></td>
 </tr>
 </table>
+</div>
 
+</form>
 <?php
 include eiseIntraAbsolutePath."inc-frame_bottom.php";
 ?>
