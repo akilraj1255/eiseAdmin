@@ -65,6 +65,8 @@ protected function collectDataStatus($staID = null){
 /* reads data from stbl_attribute table */
 protected function collectDataAttributes(){
     
+    $this->arrAtr = Array();
+    
     $sqlAtr = "SELECT * 
         FROM stbl_attribute 
         ".($this->staID!=="" 
@@ -175,7 +177,10 @@ protected function collectDataActions($arrConfig = Array(), $staID = null){
     
 }
 
-protected function getActionAttribute($actID){
+protected function getActionAttribute($actID, $forceRead = false){
+    
+    if (isset($this->arrAAT[$actID]) && $forceRead===false)
+		return $this->arrAAT[$actID];
     
     $oSQL = $this->oSQL;
     
@@ -205,6 +210,8 @@ protected function getActionAttribute($actID){
         $arrToRet[$rwAAT["aatAttributeID"]]=$rwAAT;
     }
     $oSQL->free_result($rsAAT);
+    
+    $this->arrAAT[$actID] = $arrToRet;
     
     return $arrToRet;
 }
@@ -300,11 +307,13 @@ public function getList($arrAdditionalCols = Array(), $arrExcludeCols = Array())
         , "cookieExpire" => time()+60*60*24*30
             , 'defaultOrderBy'=>"{$this->entID}EditDate"
             , 'defaultSortOrder'=>"DESC"
-            , 'sqlFrom' => "{$rwEnt["entTable"]} INNER JOIN stbl_status ON {$entID}StatusID=staID AND staEntityID='{$entID}'
-                    LEFT OUTER JOIN stbl_action_log LAC
+            , 'sqlFrom' => "{$rwEnt["entTable"]} LEFT OUTER JOIN stbl_status ON {$entID}StatusID=staID AND staEntityID='{$entID}'".
+                ((!in_array("actTitle", $arrExcludeCols) && !in_array("staTitle", $arrExcludeCols))
+                    ? "LEFT OUTER JOIN stbl_action_log LAC
                     INNER JOIN stbl_action ON LAC.aclActionID=actID 
                     ON {$entID}ActionLogID=LAC.aclGUID
                     LEFT OUTER JOIN stbl_action_log SAC ON {$entID}StatusActionLogID=SAC.aclGUID"
+                    : "")
         ));
 
     $lst->Columns[] = array('title' => ""
@@ -457,6 +466,12 @@ public function getFields($arrConfig = Array(), $oEntItem = null){
     }
     
     foreach($this->arrAtr as $rwAtr){
+        
+        if ($arrConfig['flagFullEdit']){
+            $rwAtr["satFlagShowInForm"] =true;
+            $rwAtr["satFlagEditable"] =true;
+        }
+        
         if ($this->staID!=="" && !$rwAtr["satFlagShowInForm"])
             continue;
         
@@ -525,7 +540,6 @@ function showAttributeValue($rwAtr, $suffix = ""){
             if (!$arrInpConfig["FlagWrite"]){ // if read-only && text is set
                 $arrOptions[$value]=$text;
             } else {
-                $src = $rwAtr["atrProgrammerReserved"];
                 if (preg_match("/^(vw|tbl)_/", $rwAtr["atrDataSource"])){
                     $rsCMB = $intra->getDataFromCommonViews(null, null, $rwAtr["atrDataSource"]
                         , (strlen($rwAtr["atrProgrammerReserved"])<=3 ? $rwAtr["atrProgrammerReserved"] : ""));
@@ -533,8 +547,8 @@ function showAttributeValue($rwAtr, $suffix = ""){
                     while($rwCMB = $oSQL->fetch_array($rsCMB))
                         $arrOptions[$rwCMB["optValue"]]=$rwCMB["optText"];
                 }
-                if (preg_match("/^Array/i", $src)){
-                    eval ("\$arrOptions=$src;");
+                if (preg_match("/^Array/i", $rwAtr["atrProgrammerReserved"])){
+                    eval ("\$arrOptions={$rwAtr["atrProgrammerReserved"]};");
                 }
             }
             $strRet = $intra->showCombo($inputName, $value, $arrOptions,
@@ -794,79 +808,23 @@ function checkArchiveTable (){
 	
 }
 
-function upgrade_eiseIntra(){
 
-echo "Updating entity {$this->rwEnt["entTitle"]}...\r\n";ob_flush();
-
-// update tbl_ENT_number
-
-
-
-/*
-echo "Add extra columns to {$this->rwEnt["entTable"]}_log...";ob_flush();
-
-$sqlAddCols = "ALTER TABLE `{$this->rwEnt["entTable"]}_log`
-	ADD COLUMN `l{$this->entID}ID` BIGINT UNSIGNED NULL DEFAULT NULL FIRST,
-	ADD COLUMN `l{$this->entID}ItemID` VARCHAR(50) NULL DEFAULT NULL AFTER `l{$this->entID}ID`";
-$this->oSQL->q($sqlAddCols);
-echo " done.\r\n";ob_flush();
-
-echo "Update action and status log with sequential numbers...";ob_flush();
-$sqlItems = "SELECT {$this->entID}ID FROM {$this->rwEnt["entTable"]} ORDER BY {$this->entID}InsertDate";
-$rsItem = $this->oSQL->q($sqlItems);
-echo "found ".$this->oSQL->n($rsItem)." items for ".$this->rwEnt["entTitle{$intra->local}"].":\r\n";
-while ($rwItem = $this->oSQL->f($rsItem)){
-    echo "Updating ".$rwItem["{$this->entID}ID"]."...";ob_flush();
-    $timeStart = microtime(true);
-    $this->oSQL->q("START TRANSACTION");
+function getActionPhaseTitle($phase){
     
-    $sqlItems = "SELECT aclGUID as guid, 'stbl_action_log' as tbl, 'acl' as prfx, aclInsertDate as dt 
-            FROM stbl_action_log 
-            WHERE aclEntityItemID='".$rwItem["{$this->entID}ID"]."'
-        UNION
-        SELECT stlGUID as guid, 'stbl_status_log' as tbl, 'stl' as prfx , stlInsertDate as dt 
-            FROM stbl_status_log
-            WHERE stlEntityItemID='".$rwItem["{$this->entID}ID"]."'
-        ORDER BY dt, prfx";
-    $rs = $this->oSQL->q($sqlItems);
-    while($rw = $this->oSQL->f($rs)){
-        $logID = $this->getLogID();
-        $this->oSQL->q("UPDATE {$rw["tbl"]} SET {$rw["prfx"]}ID=".$logID." WHERE {$rw["prfx"]}GUID='{$rw["guid"]}'");
-        $this->oSQL->q("UPDATE {$this->rwEnt["entTable"]}_log SET l{$this->entID}ID=".$logID."
-            , l{$this->entID}ItemID='".$rwItem["{$this->entID}ID"]."'
-            WHERE l{$this->entID}GUID='{$rw["guid"]}'");
-    }    
-    unset($item);
-    $this->oSQL->q("COMMIT");
+    GLOBAL $intra;
     
-    //$this->oSQL->showProfileInfo();
+    switch ($phase){
+        case 0: 
+            return $intra->translate("planned");
+        case 1: 
+            return $intra->translate("started");
+        case 2: 
+            return $intra->translate("finished");
+        case 3: 
+            return $intra->translate("cancelled");
+            
+    }
     
-    $timePeriod = number_format(microtime(true)-$timeStart, 6, ".", "");
-    echo "Done in {$timePeriod}s\r\n";
-    ob_flush();
-}
-echo "Finished updating log entries\r\n";ob_flush();
-
-echo "Deleting log entries not linked to master...";ob_flush();
-$sqlDelNulls = "DELETE FROM {$this->rwEnt["entTable"]}_log WHERE l{$this->entID}ID IS NULL";
-$this->oSQL->q($sqlDelNulls);
-echo "done\r\n";ob_flush();
-
-
-echo "Add indexes to log table...";ob_flush();
-$this->oSQL->q("ALTER TABLE `tbl_air_shipment_log`
-	ALTER `lashID` DROP DEFAULT");
-$this->oSQL->q("ALTER TABLE `tbl_air_shipment_log`
-	CHANGE COLUMN `lashID` `lashID` BIGINT(20) UNSIGNED NOT NULL FIRST");
-    
-$this->oSQL->q("ALTER TABLE `{$this->rwEnt["entTable"]}_log`
-    DROP PRIMARY KEY,
-	ADD PRIMARY KEY (`l{$this->entID}ID`),
-	ADD INDEX `IX_l{$this->entID}ItemID` (`l{$this->entID}ItemID`)");
-*/
-
-echo "done\r\n";ob_flush();
-
 }
 
 

@@ -180,10 +180,22 @@ div.menubutton  {
     overflow: visible;
     font-weight: normal;
     white-space: nowrap;
+    display: inline;
 }
 
 .eiseIntra_stlATA:after {
     content: " - ";
+}
+
+.eiseIntraHistoryTable {
+    border-collapse: collapse;
+}
+.eiseIntraHistoryTable TR {
+    vertical-align: top;		
+}
+
+.eiseIntraHistoryTable TH,.eiseIntraHistoryTable  TD {
+    white-space: nowrap;
 }
 
 /********************************************************************/
