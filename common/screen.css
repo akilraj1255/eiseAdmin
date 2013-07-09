@@ -216,6 +216,20 @@ h1 {
     padding: 0.3em 4em;
 }
 
+
+.eiseIntraHistoryTable {
+    background: Buttonshadow;
+    font-size: 11px;
+    border: 1px solid ButtonShadow;
+}
+.eiseIntraHistoryTable TR {
+    height: 14px;
+}
+
+.eiseIntraHistoryTable TH,.eiseIntraHistoryTable  TD {
+    padding: 2px 3px;
+}
+
 .intraField label {
     float: left;
     width: 150px;
