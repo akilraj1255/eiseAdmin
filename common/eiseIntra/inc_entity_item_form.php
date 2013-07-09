@@ -166,7 +166,9 @@ function showEntityItemFields($arrConfig = Array()){
         throw new Exception("Attribute set not found");
     }
     
-    echo "<fieldset class=\"eiseIntraMainForm\"><legend>".$this->intra->translate("Data")."</legend>\r\n";
+    echo "<fieldset class=\"eiseIntraMainForm\"><legend>".($arrConfig['title'] 
+        ? $arrConfig['title'] 
+        : $this->intra->translate("Data"))."</legend>\r\n";
 
     echo $this->getFields($arrConfig, $this);
     
@@ -217,8 +219,8 @@ function showActivityLog(){
 foreach($this->rwEnt["STL"] as $stlGUID => $rwSTL){
     ?>
     <div class="eiseIntraLogStatus">
-    <div class="eiseIntraLogTitle"><span class="eiseIntra_stlTitle"><?php echo ($rwSTL["stlTitle".$this->intra->local]!="" 
-        ? $rwSTL["stlTitle".$this->intra->local]
+    <div class="eiseIntraLogTitle"><span class="eiseIntra_stlTitle"><?php echo ($rwSTL["stlTitle{$this->intra->local}"]!="" 
+        ? $rwSTL["stlTitle{$this->intra->local}"]
         : $rwSTL["staTitle"]); ?></span>
         
         <span class="eiseIntra_stlATA"><?php echo $intra->dateSQL2PHP($rwSTL["stlATA"]); ?></span>
@@ -288,7 +290,7 @@ function showActionInfo($rwACT, $actionCallBack=""){
     $strLocal = $this->intra->local;
     
     $flagAlwaysShow = ($rwACT["aclActionPhase"]<2 ? true : false);
-    $flagEditable = ($rwACT["aclActionPhase"]<2 && $this->intra->arrUsrData["FlagWrite"]==true && !$this->flagArchive);
+    $flagEditable = $rwACT['aclFlagEditable'] || ($rwACT["aclActionPhase"]<2 && $this->intra->arrUsrData["FlagWrite"]==true && !$this->flagArchive);
     ?>
     <div class="eiseIntraLogAction">
     <div class="eiseIntraLogTitle" id="aclTitle_<?php  echo $rwACT["aclGUID"] ; ?>" title="Last edited: <?php  echo htmlspecialchars($rwACT["aclEditBy"]."@".Date("d.m.Y H:i", strtotime($rwACT["aclEditDate"]))).
@@ -410,7 +412,7 @@ $this->oSQL->free_result($rs);
 
 $strRes = "<fieldset><legend>Status".($arrConfig['staTitle'] ? ": ".$arrConfig['staTitle'] : "")."</legend>";
 $strRes .= "<div style=\"max-height:100px; overflow-y: auto;\">\r\n";
-$strRes .= "<table width='100%' class='intraHistoryTable'>\r\n";
+$strRes .= "<table width='100%' class='eiseIntraHistoryTable'>\r\n";
 
 for ($i=0;$i<count($arrStatus);$i++){
     $strRes .= "<tr class='tr".($i % 2)."' valign='top'>\r\n";
@@ -527,7 +529,7 @@ $rsFile = $oSQL->do_query($sqlFile);
 if ($oSQL->num_rows($rsFile) > 0) {
 ?>
 <fieldset><legend><?php  echo $this->intra->translate("Files") ; ?></legend>
-<table width="100%" class="intraHistoryTable">
+<table width="100%" class="eiseIntraHistoryTable">
 <thead>
 <tr>
 <th>File</th>
