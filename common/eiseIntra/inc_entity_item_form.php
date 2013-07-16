@@ -31,7 +31,7 @@ if (!$this->flagArchive){
 <input type="hidden" name="actID" id="actID" value="">
 <input type="hidden" name="aclGUID" id="aclGUID" value="">
 <input type="hidden" name="aclToDo" id="aclToDo" value="">
-<input type="hidden" name="actComments" id="actComments" value="">
+<input type="hidden" name="aclComments" id="aclComments" value="">
 <?php 
 }
  ?>
@@ -529,6 +529,7 @@ $rsFile = $oSQL->do_query($sqlFile);
 if ($oSQL->num_rows($rsFile) > 0) {
 ?>
 <fieldset><legend><?php  echo $this->intra->translate("Files") ; ?></legend>
+<div style="max-height:100px; overflow-y: auto;">
 <table width="100%" class="eiseIntraHistoryTable">
 <thead>
 <tr>
@@ -555,6 +556,7 @@ while($rwFile = $oSQL->fetch_array($rsFile)){
  ?>
  </tbody>
 </table>
+</div>
 </fieldset>
 <?php
 
