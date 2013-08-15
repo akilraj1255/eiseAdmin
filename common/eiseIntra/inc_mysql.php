@@ -186,7 +186,9 @@ class sql{
     function not_right($error="MySQL error") {
       $this->errordesc = mysql_error();
       $this->errornum  = mysql_errno();  
-      throw new Exception($error." - {$this->errornum}: {$this->errordesc}\r\n");
+      if ($this->flagProfiling)
+        $this->showProfileInfo();
+      throw new Exception("{$this->errornum}: {$this->errordesc},\r\n{$error}\r\n");
     }
     
     function sql ($dbhost, $dbuser, $dbpass, $dbname, $flagPersistent=false) {

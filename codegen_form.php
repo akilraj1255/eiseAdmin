@@ -176,8 +176,7 @@ switch ($_GET["toGen"]){
             , 'field' => '".($arrTable['PKtype']=="user_defined" ? $arrTable['PK'][0]."_id" : $arrTable['PK'][0])."'
         );\r\n";
         
-        for($i=0;$i<count($arrTable['columns']);$i++){
-            $col = $arrTable['columns'][$i];
+        foreach($arrTable['columns'] as $col){
             if ($col["DataType"]=="binary")
                continue;
             if ($col["Extra"]=="auto_increment")
@@ -445,6 +444,9 @@ include('../common/inc-frame_bottom.php');
                 "\$arrCSS[] = commonStuffRelativePath.'eiseList/themes/default/screen.css';\r\n".
                 "include_once(commonStuffAbsolutePath.'eiseList/inc_eiseList.php');\r\n\r\n";
                 
+        $strCode .= "\$arrJS[] = jQueryUIRelativePath.'js/jquery-ui-1.8.16.custom.min.js';\r\n".
+                "\$arrCSS[] = jQueryUIRelativePath.'css/'.jQueryUITheme.'/jquery-ui-1.8.16.custom.css';\r\n\r\n";
+                
         $strCode .= "\$listName = \$listName ? \$listName : \"".$arrTable['prefix']."\";\r\n".
                 "\$lst = new eiseList(\$oSQL, \$listName\r\n".
                 "    , Array('title'=>\$arrUsrData[\"pagTitle\$strLocal\"]\r\n".
@@ -624,9 +626,9 @@ include eiseIntraAbsolutePath.'inc-frame_top.php';
 
 <form action=\"<?php  echo \$_SERVER[\"PHP_SELF\"] ; ?>\" method=\"POST\" class=\"eiseIntraForm\">\r\n";
 foreach($arrTable["PK"] as $i=>$pk){
-    $strCode .= "<input type=\"hidden\" name=\"".$pk."\" value=\"<?php  echo htmlspecialchars(\$".$pk.") ; ?>\">\r\n";
+    $strCode .= "<input type=\"hidden\" id=\"".$pk."\" name=\"".$pk."\" value=\"<?php  echo htmlspecialchars(\$".$pk.") ; ?>\">\r\n";
 }
-$strCode .= "<input type=\"hidden\" name=\"DataAction\" value=\"update\">
+$strCode .= "<input type=\"hidden\" id=\"DataAction\" name=\"DataAction\" value=\"update\">
 
 <fieldset class=\"eiseIntraMainForm\"><legend><?php echo \$intra->arrUsrData[\"pagTitle{\$intra->local}\"]; ?></legend>\r\n\r\n";
         $i=0;
@@ -691,7 +693,7 @@ if (\$intra->arrUsrData[\"FlagWrite\"]) {
 <?php 
 if (\$".$arrTable['PK'][0]."!=\"\" && \$rw".strtoupper($arrTable['prefix'])."[\"".$arrTable['prefix']."DeleteDate\"]==\"\"){
 ?>
-<input type=\"Submit\" value=\"Delete\" class=\"eiseIntraDelete\">
+<input type=\"button\" value=\"Delete\" class=\"eiseIntraDelete\">
 <?php  
   }
 }
@@ -989,7 +991,7 @@ CREATE TABLE `tbl_request_number` (
                $strHTML .= "<li><b>{$rwAct["actTitle$strLocal"]}</b></li><br><br>Обязательные атрибуты:<br><i>\r\n";
                $sqlAAT = "SELECT *
                 FROM stbl_action_attribute INNER JOIN stbl_attribute ON atrID=aatAttributeID 
-                WHERE atrEntityID='{$entID}' AND aatActionID='{$rwAct["actID"]}'
+                WHERE atrEntityID='{$entID}' AND aatActionID='{$rwAct["actID"]}' AND aatFlagMandatory=1 
                 ORDER BY atrOrder";
                 $rsAAT = $oSQL->do_query($sqlAAT);
                 while ($rwAAT = $oSQL->fetch_array($rsAAT)){

@@ -50,7 +50,7 @@ function __construct($oSQL, $conf = Array()){
     $this->conf["prgTime"] = str_replace($arrFind, $arrReplace, $this->conf["timeFormat"]);
     
     $this->oSQL = $oSQL;
-    
+
 }
 
 /**********************************
@@ -65,7 +65,7 @@ function Authenticate($login, $password, &$strError, $method="LDAP"){
         GLOBAL $ldap_server;
         GLOBAL $ldap_domain;
         GLOBAL $ldap_dn;
-        GLOBAL $ldap_conn;
+        GLOBAL $ldap_conn, $ldap_anonymous_login, $ldap_anonymous_pass;
         if (preg_match("/^([a-z0-9]+)[\/\\\]([a-z0-9]+)$/i", $login, $arrMatch)){
             $login = $arrMatch[2];
             $ldap_domain = strtolower($arrMatch[1].".abyrvalg.com");
@@ -575,10 +575,12 @@ function showAjaxDropdown($strFieldName, $strValue, $arrConfig) {
 // Page-formatting routines
 function loadJS(){
     GLOBAL $js_path, $arrJS;
- 
+        
+        $cachePreventor = preg_replace('/\D/', '', $this->conf['version']);
+        
         //-----------прицепляем содержимое массива  $arrJS
         for ($i=0;$i<count($arrJS);$i++){
-           echo "<script type=\"text/javascript\" src=\"".$arrJS[$i]."\"></script>\r\n";
+           echo "<script type=\"text/javascript\" src=\"{$arrJS[$i]}?{$cachePreventor}\"></script>\r\n";
         }
         unset ($i);
         
@@ -594,8 +596,10 @@ function loadJS(){
 function loadCSS(){
     GLOBAL $arrCSS;
     
+    $cachePreventor = preg_replace('/\D/', '', $this->conf['version']);
+    
     for($i=0; $i<count($arrCSS); $i++ ){
-        echo "<link rel=\"STYLESHEET\" type=\"text/css\" href=\"{$arrCSS[$i]}\" media=\"screen\">\r\n";
+        echo "<link rel=\"STYLESHEET\" type=\"text/css\" href=\"{$arrCSS[$i]}?{$cachePreventor}\" media=\"screen\">\r\n";
     }
 
 }
@@ -790,6 +794,7 @@ function getSQLValue($col, $flagForArray=false){
         break;
       case "FK":
       case "combobox":
+      case "ajax_dropdown":
        $strValue = "\".($strPost!=\"\" ? \"'\".$strPost.\"'\" : \"NULL\").\"";
         break;
       case "PK":
@@ -869,7 +874,7 @@ function datePHP2SQL($dtVar, $valueIfEmpty="NULL"){
         preg_match("/^".$this->conf["prgDate"]."$/", $dtVar) 
         ? "'".preg_replace("/".$this->conf["prgDate"]."/", $this->conf["prgDateReplaceTo"], $dtVar)."'" 
         : (
-            preg_match('/^[12][0-9]{3}\-[0-9]{2}-[0-9]{2}$/', $dtVar)
+            preg_match('/^[12][0-9]{3}\-[0-9]{2}-[0-9]{2}( [0-9]{1,2}\:[0-9]{2}(\:[0-9]{2}){0,1}){0,1}$/', $dtVar)
             ? "'".$dtVar."'"
             : $valueIfEmpty 
         )

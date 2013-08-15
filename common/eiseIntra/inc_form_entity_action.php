@@ -154,14 +154,13 @@ switch($DataAction){
             , actTitlePastLocal
             , actDescription
             , actDescriptionLocal
-            , actTrackPrecision
             , actFlagDeleted
             , actPriority
             , actFlagComment
             , actShowConditions
             , actFlagHasEstimates
+            , actFlagDatetime
             , actFlagAutocomplete
-            , actFlagDepartureEqArrival
             , actDepartureDescr
             , actArrivalDescr
             , actFlagInterruptStatusStay
@@ -176,14 +175,13 @@ switch($DataAction){
             , CONCAT(actTitlePastLocal, ".$oSQL->e(" - copy {$nCopy}").")
             , actDescription
             , actDescriptionLocal
-            , actTrackPrecision
             , actFlagDeleted
             , actPriority+1
             , actFlagComment
             , actShowConditions
             , actFlagHasEstimates
+            , actFlagDatetime
             , actFlagAutocomplete
-            , actFlagDepartureEqArrival
             , actDepartureDescr
             , actArrivalDescr
             , actFlagInterruptStatusStay
@@ -212,7 +210,6 @@ switch($DataAction){
             , aatAttributeID
             , aatFlagMandatory
             , aatFlagToChange
-            , aatFlagToTrack
             , aatFlagToAdd
             , aatFlagToPush
             , aatFlagEmptyOnInsert
@@ -223,7 +220,6 @@ switch($DataAction){
             , aatAttributeID
             , aatFlagMandatory
             , aatFlagToChange
-            , aatFlagToTrack
             , aatFlagToAdd
             , aatFlagToPush
             , aatFlagEmptyOnInsert
@@ -251,8 +247,6 @@ switch($DataAction){
     
     case "update":
         
-        $oSQL->q("START TRANSACTION");
-        
         $sql[] = "UPDATE stbl_action SET
             actTitle = ".$oSQL->escape_string($_POST['actTitle'])."
             , actTitleLocal = ".$oSQL->escape_string($_POST['actTitleLocal'])."
@@ -263,12 +257,9 @@ switch($DataAction){
             , actFlagDeleted = '".(integer)$_POST['actFlagDeleted']."'
             , actFlagComment = '".($_POST['actFlagComment']=='on' ? 1 : 0)."'
             , actShowConditions = ".$oSQL->escape_string($_POST['actShowConditions'])."
-            , actTrackPrecision = ".$oSQL->escape_string($_POST['actTrackPrecision'])."
             , actFlagHasEstimates = '".($_POST['actFlagHasEstimates']=='on' ? 1 : 0)."'
             , actFlagAutocomplete = '".($_POST['actFlagAutocomplete']=='on' ? 1 : 0)."'
-            , actFlagDepartureEqArrival = '".($_POST['actFlagDepartureEqArrival']=='on' ? 1 : 0)."'
             , actFlagInterruptStatusStay = '".($_POST['actFlagInterruptStatusStay']=='on' ? 1 : 0)."'
-            , actFlagDeleted = '".($_POST['actFlagDeleted']=='on' ? 1 : 0)."'
             , actEditBy = '$usrID', actEditDate = NOW()
             WHERE actID = '".$_POST['actID']."'";
        
@@ -276,12 +267,11 @@ switch($DataAction){
        
        $sql[] = "DELETE FROM stbl_action_attribute WHERE aatActionID='$actID'";
        
-        for ($i=0; $i< count($_POST["atrID"]); $i++)
-            if ($_POST["atrID"][$i]) {
+       for ($i=0; $i< count($_POST["atrID"]); $i++)
+          if ($_POST["aatFlagToTrack"][$i]){
              $sql[] = "INSERT INTO stbl_action_attribute (
                  aatActionID
                 , aatAttributeID
-                , aatFlagToTrack
                 , aatFlagMandatory
                 , aatFlagToChange
                 , aatFlagEmptyOnInsert
@@ -290,14 +280,13 @@ switch($DataAction){
                 ) VALUES (
                 '{$actID}'
                 , '".$_POST["atrID"][$i]."'
-                , '".(integer)$_POST["aatFlagToTrack"][$i]."'
                 , '".(integer)$_POST["aatFlagMandatory"][$i]."'
                 , '".(integer)$_POST["aatFlagToChange"][$i]."'
                 , '".(integer)$_POST["aatFlagEmptyOnInsert"][$i]."'
                 , ".$oSQL->escape_string($_POST["aatFlagTimestamp"][$i])."
                 , '$usrID', NOW(), '$usrID', NOW())";
                 
-        }
+          }
       
       $sql[] = "DELETE FROM stbl_role_action WHERE rlaActionID='".$_POST['actID']."'";
       
@@ -321,9 +310,7 @@ switch($DataAction){
      //*/
      for($i=0;$i<count($sql);$i++)
           $oSQL->do_query($sql[$i]);
-        
-        $oSQL->q("COMMIT");
-        
+          
        SetCookie("UserMessage", "Action ".$intra->translate("is updated"));
        header("Location: ".$_SERVER["PHP_SELF"]."?dbName=$dbName&actID=$actID");
        
@@ -345,7 +332,7 @@ if ($easyAdmin){
 	   , "class"=> "ss_page_copy"
 	);
 }
-include eiseIntraAbsolutePath."inc-frame_top.php";
+include('../common/eiseIntra/inc-frame_top.php');
 ?>
 <script>
 $(document).ready(function(){  
@@ -431,9 +418,6 @@ while ($rwRol = $oSQL->fetch_array($rsRol)){
 <td class="field_title">Autocomplete?</td>
 <td><?php  echo $intra->showCheckBox("actFlagAutocomplete", $rwAct["actFlagAutocomplete"]) ; ?></td>
 </tr>
-<td class="field_title">Departure Time = Arrival Time?</td>
-<td><?php  echo $intra->showCheckBox("actFlagDepartureEqArrival", $rwAct["actFlagDepartureEqArrival"]) ; ?></td>
-</tr>
 <tr>
 <td class="field_title">Has Estimates?</td>
 <td><?php  echo $intra->showCheckBox("actFlagHasEstimates", $rwAct["actFlagHasEstimates"]) ; ?></td>
@@ -441,10 +425,6 @@ while ($rwRol = $oSQL->fetch_array($rsRol)){
 <tr>
 <td class="field_title">Interrupt Status Stay?</td>
 <td><?php  echo $intra->showCheckBox("actFlagInterruptStatusStay", $rwAct["actFlagInterruptStatusStay"]) ; ?></td>
-</tr>
-<tr>
-<td class="field_title">Precision:</td>
-<td><?php  echo $intra->showCombo("actTrackPrecision", $rwAct["actTrackPrecision"], Array("date"=>"Date", "datetime"=>"Date+Time")) ; ?></td>
 </tr>
 <tr><td colspan=2><hr></td></tr>
 <tr>
@@ -459,6 +439,7 @@ while ($rwRol = $oSQL->fetch_array($rsRol)){
 <td width="50%">
 <?php
 $sqlAAT = "SELECT *
+, CASE WHEN aatID IS NULL THEN 0 ELSE 1 END as aatFlagToTrack
 FROM stbl_attribute LEFT OUTER JOIN stbl_action_attribute ON atrID=aatAttributeID AND aatActionID='$actID'
 WHERE atrEntityID='".$rwAct["actEntityID"]."'
 ORDER BY atrOrder";
