@@ -199,10 +199,17 @@ h1 {
     font-weight: 600;
 }
 
+.eiseIntraMainForm legend {
+    font-size: 1.8em;
+    line-height: 1.8em;
+    font-weight: bold;
+}
+
 .eiseIntraForm  label{
     width: 24%;
     font-weight: bold;
     font-size: 0.9em;
+    text-align:right;
 }
 
 .eiseIntraForm  .eiseValue{

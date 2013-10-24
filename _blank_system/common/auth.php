@@ -14,7 +14,7 @@ $oSQL = new sql($DBHOST, $DBUSER, $DBPASS, $DBNAME, false, CP_UTF8);
 try {
     $oSQL->connect();
 } catch (Exception $e){
-    die("Unable to connect to database");
+    die($e->getMessage());
 }
 
 $intra = new eiseIntra($oSQL, Array("collect_keys"=>$collect_keys));
@@ -22,7 +22,7 @@ $intra = new eiseIntra($oSQL, Array("collect_keys"=>$collect_keys));
 if (!$flagNoAuth) {
         // checking is session available
     $intra->session_initialize();
-    if (!$_SESSION["usrID"]){
+    if (!$intra->usrID){
        SetCookie("PageNoAuth", $_SERVER["PHP_SELF"].($_SERVER["QUERY_STRING"]!="" ? ("?".$_SERVER["QUERY_STRING"]) : ""));
        header("HTTP/1.0 401 Unauthorized");
        header ("Location: login.php");

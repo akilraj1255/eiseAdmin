@@ -2,7 +2,7 @@
 include 'common/auth.php';
 
 $dbName = (isset($_POST["dbName"]) ? $_POST["dbName"] : $_GET["dbName"]);
-$oSQL->dbname = $dbName;
+$oSQL->select_db($dbName);
 
 $DataAction  = (isset($_POST['DataAction']) ? $_POST['DataAction'] : $_GET['DataAction'] );
 
@@ -68,7 +68,7 @@ $gridENT->Columns[] = Array(
 );
 $gridENT->Columns[] = Array(
         'title' => "Title (Local: Dat)"
-        , 'field' => "entTitlLocaleDat"
+        , 'field' => "entTitleLocalDat"
         , 'type' => "text"
 );
 $gridENT->Columns[] = Array(

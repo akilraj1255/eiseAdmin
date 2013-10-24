@@ -4,7 +4,7 @@ include "common/auth.php";
 
 $dbName = $_POST["dbName"] ? $_POST["dbName"] : $_GET["dbName"];
 
-$oSQL->dbname = $dbName;
+$oSQL->select_db($dbName);
 
 //include "common/inc_project.php";
 
@@ -57,12 +57,12 @@ switch ($DataAction){
 
 $arrActions[]= Array ("title" => "New script"
 	   , "action" => "page_form.php?dbName=$dbName"
-	   , "class"=> "new"
+	   , "class"=> "ss_add"
 	);
 
 $arrActions[]= Array ("title" => "Repair"
 	   , "action" => "page_form.php?dbName=$dbName&DataAction=repair"
-	   , "class"=> "setup"
+	   , "class"=> "ss_wrench"
 	);	
 
 

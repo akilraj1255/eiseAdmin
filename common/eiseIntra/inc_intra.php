@@ -7,11 +7,11 @@ eiseIntra core class
 
 
 include "inc_config.php";
-include "inc_mysql.php";
+include "inc_mysqli.php";
 
 class eiseIntra {
 
-function __construct($oSQL, $conf = Array()){
+function __construct($oSQL = null, $conf = Array()){ //$oSQL is not mandatory anymore
 
     $this->conf = Array(                    //defaults for intra
         'dateFormat' => "d.m.Y" // 
@@ -94,18 +94,6 @@ function Authenticate($login, $password, &$strError, $method="LDAP"){
            } else
                 return true;
         }
-    case "mysql":
-        $oSQL->dbhost = $_POST["host"];
-        $oSQL->dbuser = $login;
-        $oSQL->dbpass = $password;
-        $oSQL->dbname = (!$_POST["database"] ? 'mysql' : $_POST["database"]) ;
-        try {
-            $oSQL->connect();
-        } catch(Exception $e){
-            $strError = $e->getMessage();
-            return false;
-        }
-        return true;
     case "database":
     case "DB":
         if(!$oSQL->connect()){
@@ -121,14 +109,23 @@ function Authenticate($login, $password, &$strError, $method="LDAP"){
             return false;
         }
         break;
+    case "mysql":
+        try {
+            $this->oSQL = new eiseSQL ($_POST["host"], $login, $password, (!$_POST["database"] ? 'mysql' : $_POST["database"]));
+        } catch(Exception $e){
+            $strError = $e->getMessage();
+            return false;
+        }
+        return true;
     }
+
     
 }
-
 
 function session_initialize(){
    session_set_cookie_params(0, eiseIntraCookiePath);
    session_start();
+   $this->usrID = $_SESSION["usrID"];
 } 
 
 function checkPermissions(){
@@ -272,7 +269,7 @@ function translate($key){
         $this->addTranslationKey($key);
     }
     
-    return isset($this->lang[$key]) ? $this->lang[$key] : $key;
+    return stripslashes(isset($this->lang[$key]) ? $this->lang[$key] : $key);
 }
 
 function addTranslationKey($key){
@@ -291,7 +288,7 @@ function readSettings(){
     
     $oSQL = $this->oSQL;
     
-    /* инициализируем переменные из tbl_setup в массив ============================ BEGIN */
+    /* ?????????????? ?????????? ?? tbl_setup ? ?????? ============================ BEGIN */
     
     $arrSetup = Array();
     
@@ -328,7 +325,7 @@ function readSettings(){
                 break;
         }
     }
-    /* инициализируем переменные из tbl_setup ============================ END */
+    /* ?????????????? ?????????? ?? tbl_setup ============================ END */
     $this->conf = array_merge($this->conf, $arrSetup);
     
     return $arrSetup;
@@ -578,13 +575,13 @@ function loadJS(){
         
         $cachePreventor = preg_replace('/\D/', '', $this->conf['version']);
         
-        //-----------прицепляем содержимое массива  $arrJS
+        //-----------?????????? ?????????? ???????  $arrJS
         for ($i=0;$i<count($arrJS);$i++){
            echo "<script type=\"text/javascript\" src=\"{$arrJS[$i]}?{$cachePreventor}\"></script>\r\n";
         }
         unset ($i);
         
-//------------Прицепляет скрипты для конкретной страницы из js/*.js
+//------------?????????? ??????? ??? ?????????? ???????? ?? js/*.js
 		$arrScript = array_pop(explode("/",$_SERVER["PHP_SELF"]));
 		$arrScript = explode(".",$arrScript);
 		$strJS = (isset($js_path) ? $js_path : "js/").$arrScript[0].".js";
@@ -937,7 +934,29 @@ function getUserData($usrID){
             : $rw["optText{$this->local}"])
          : $usrID);
 }
-
+function getUserData_All($usrID, $strWhatData='all'){
+    
+    $rsUser = $this->oSQL->q("SELECT * FROM stbl_user WHERE usrID='$usrID'");
+    $rwUser = $this->oSQL->f($rsUser);
+    
+    $key = strtolower($strWhatData);
+    
+    switch ($key) {
+        case "all":
+            return $rwUser;
+        case "name":
+        case "fn_sn":
+        case "sn_fn":
+            return $rwUser["usrName"];
+        case "namelocal":
+            return $rwUser["usrNameLocal"];
+        case "email":
+        case "e-mail":
+            return $rwUser["usrEMail"];
+        default:
+            return $rwUser[$strWhatData];
+   }
+}
 
 /******************************************************************************/
 /* ARCHIVE/RESTORE ROUTINES                                                   */

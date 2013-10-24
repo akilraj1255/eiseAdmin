@@ -3,8 +3,8 @@ include commonStuffAbsolutePath.'eiseGrid/inc_eiseGrid.php';
 $arrJS[] = commonStuffRelativePath.'eiseGrid/eiseGrid.js';
 $arrCSS[] = commonStuffRelativePath.'eiseGrid/eiseGrid.css';
 
-$oSQL->dbname=(isset($_POST["dbName"]) ? $_POST["dbName"] : $_GET["dbName"]);
-$dbName = $oSQL->dbname;
+$dbName=(isset($_POST["dbName"]) ? $_POST["dbName"] : $_GET["dbName"]);
+$oSQL->select_db($dbName);
 //$_DEBUG = true;
 
 $DataAction = isset($_POST["DataAction"]) ? $_POST["DataAction"] : $_GET["DataAction"];
@@ -261,6 +261,11 @@ $grdMX->Columns[] = Array(
          , 'type'=>"checkbox"
       );
 $grdMX->Columns[] = Array(
+         'title'=>"ATD=ATA?"
+         , 'field'=>'actFlagDepartureEqArrival'
+         , 'type'=>"checkbox"
+      );
+$grdMX->Columns[] = Array(
    'title'=>"Ord"
    , 'field'=>"actPriority"
    , 'type'=>"text"
@@ -320,11 +325,15 @@ switch ($DataAction){
            if ($arrSTAToDelete[$i]!=""){
               $arrSta = explode("##", $arrSTAToDelete[$i]);
               $staID = $arrSta[0];
-              $sqlACT = "SELECT actID FROM stbl_action WHERE (actNewStatusID='".$staID."' OR actOldStatusID='".$staID."') AND actEntityID='$entID'";
+              $sqlACT = "SELECT atsID FROM stbl_action_status 
+			  	INNER JOIN stbl_action ON actID=atsActionID
+				WHERE (atsNewStatusID='".$staID."' OR atsOldStatusID='".$staID."') AND actEntityID='$entID'";
               //echo $sqlACT; die();
               $rsActToDel = $oSQL->do_query($sqlACT);
-              while ($rwActToDel = $oSQL->fetch_array($rsActToDel))
-                $_POST["inp_act_deleted"] .= "|".$rwActToDel["actID"];
+              while ($rwATS = $oSQL->fetch_array($rsActToDel)){
+				  $sqlATS = "DELETE FROM tbl_action_status WHERE atsID='{$rwATS['atsID']}'";
+				  $oSQL->q($sqlATS);
+			  }
               $sql[] = "DELETE FROM stbl_status_attribute WHERE satStatusID='".$staID."' AND satEntityID='$entID'";
            }
         
@@ -358,6 +367,7 @@ switch ($DataAction){
                       `actPriority`,
                       `actFlagComment`,
                       actFlagHasEstimates,
+                      actFlagDepartureEqArrival,
                       `actInsertBy`,`actInsertDate`,`actEditBy`,`actEditDate`
                     ) VALUE (
                       '$entID',
@@ -369,6 +379,7 @@ switch ($DataAction){
                       ".(int)($_POST["actPriority"][$i]=="" ? "0" : $_POST["actPriority"][$i]).",
                       ".(int)($_POST["actFlagComment"][$i]).",
                       ".(int)($_POST["actFlagHasEstimates"][$i]).",
+                      ".(int)($_POST["actFlagDepartureEqArrival"][$i]).",
                       '$usrID', NOW(), '$usrID', NOW()
                     );";
                  $sql[] = "SET @actID=LAST_INSERT_ID()";
@@ -379,6 +390,8 @@ switch ($DataAction){
                       actFlagDeleted=".($_POST["actFlagDeleted"][$i]).",
                       actPriority=".($_POST["actPriority"][$i]=="" ? "0" : $_POST["actPriority"][$i]).",
                       actFlagComment=".($_POST["actFlagComment"][$i]).",
+                      actFlagHasEstimates=".($_POST["actFlagHasEstimates"][$i]).",
+                      actFlagDepartureEqArrival=".($_POST["actFlagDepartureEqArrival"][$i]).",
                       actEditBy='$usrID', actEditDate=NOW()
                      WHERE actID='".$_POST["actID"][$i]."'";
                  $sql[] = "SET @actID='".$_POST["actID"][$i]."'";
@@ -425,24 +438,22 @@ switch ($DataAction){
 if ($easyAdmin){
     $arrActions[]= Array ("title" => "Fields to Table"
 	   , "action" => "codegen_form.php?entID=$entID&dbName=$dbName&tblName=".$rwEnt["entTable"]."&toGen=MissingFields"
-	   , "class"=> "script"
+	   , "class"=> "ss_application_go"
 	);
     $arrActions[]= Array ("title" => "Log Table"
 	   , "action" => "codegen_form.php?entID=$entID&dbName=$dbName&tblName=".$rwEnt["entTable"]."&toGen=LogTable"
-	   , "class"=> "script"
-	);
-    $arrActions[]= Array ("title" => "ATV 2 MT"
-	   , "action" => "codegen_form.php?entID=$entID&dbName=$dbName&tblName=".$rwEnt["entTable"]."&toGen=ATV2MT"
-	   , "class"=> "script"
+	   , "class"=> "ss_table_multiple"
 	);
     $arrActions[]= Array ("title" => "Entity Report"
 	   , "action" => "codegen_form.php?entID=$entID&dbName=$dbName&tblName=".$rwEnt["entTable"]."&toGen=EntityReport"
-	   , "class"=> "script"
+	   , "class"=> "ss_page_white_word"
 	);
+	/*
     $arrActions[]= Array ("title" => "Check Status Log"
 	   , "action" => "codegen_form.php?entID=$entID&dbName=$dbName&tblName=".$rwEnt["entTable"]."&toGen=StatusLogCheck"
 	   , "class"=> "script"
 	);
+	*/
 }
 
 include eiseIntraAbsolutePath."inc-frame_top.php";
@@ -515,6 +526,9 @@ $sqlAct = "SELECT actID
     , actPriority
     , actFlagComment
     , actFlagDeleted
+	, actFlagAutocomplete
+  , actFlagHasEstimates
+	, actFlagDepartureEqArrival
     ".$roleFields."
  , (SELECT GROUP_CONCAT(DISTINCT staTitle SEPARATOR ', ') FROM stbl_action_status INNER JOIN stbl_status ON staEntityID='$entID' AND staID=atsOldStatusID WHERE atsActionID=actID) as actOldStatusIDs
  , (SELECT GROUP_CONCAT(DISTINCT staTitle SEPARATOR ', ') FROM stbl_action_status INNER JOIN stbl_status ON staEntityID='$entID' AND staID=atsNewStatusID WHERE atsActionID=actID) as actNewStatusIDs

@@ -11,7 +11,7 @@ $pagParentID = $_GET["pagParentID"] ? $_GET["pagParentID"] : $_POST["pagParentID
 
 
 $dbName = $_GET["dbName"] ? $_GET["dbName"] : $_POST["dbName"];
-$oSQL->dbname = $dbName;
+$oSQL->select_db($dbName);
 
 /*----------------------------------------- PAGE-ROLE matrix definition -----------------------------------------------*/
 include commonStuffAbsolutePath.'eiseGrid/inc_eiseGrid.php';

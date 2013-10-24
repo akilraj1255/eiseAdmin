@@ -109,7 +109,9 @@ function Execute($allowEdit=true) {
                             if ($col['source']){
                                 $rs = $this->getDataFromCommonViews($oSQL, "", "", $col['source'], $col['prefix']);
                             }
-                        if (is_resource($rs))
+                        if (is_resource($rs) // for mysql_query() function
+							|| is_object($rs) // for mysqli::query() function
+							)
                             while ($rw = $oSQL->fetch_array($rs)){
                                     $this->Columns[$ix]['arrValues'][(string)$rw['optValue']] = $rw['optText'];
                                 }    
@@ -269,13 +271,15 @@ function paintCell($col, $ixCol, $ixRow, $rowID=""){
             $cell['class'] = str_replace("[{$rowKey}]", $rowValue, $cell['class']);
             $cell['static'] = (is_string($cell['static']) ? str_replace("[{$rowKey}]", $rowValue, $cell['static']) : $cell['static']);
             $cell['disabled'] = (is_string($cell['disabled']) ? str_replace("[{$rowKey}]", $rowValue, $cell['disabled']) : $cell['disabled']) ;
-            if ($col['href'])
+            if ($col['href']){
                 $cell['href'] = (strpos($cell['href'], "[{$rowKey}]")
-                    ? (empty($val)||empty($rowValue) 
+                    ? ($val==''||$rowValue=='' 
                         ? "" 
                         : str_replace("[{$rowKey}]", urlencode($rowValue), $cell['href']))
                     : $cell['href']
                 );
+			}
+            
         }
     
     if ((int)$cell['disabled'])

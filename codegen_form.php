@@ -2,6 +2,7 @@
 include "common/auth.php";
 
 $oSQL->dbname=$_GET["dbName"];
+$oSQL->select_db($oSQL->dbname);
 $dbName = $oSQL->dbname;
 $tblName = $_GET["tblName"];
 
@@ -718,7 +719,8 @@ include eiseIntraAbsolutePath.'inc-frame_bottom.php';
         $entID = $_GET["entID"];
         $rwEnt = $oSQL->fetch_array($oSQL->do_query("SELECT * FROM stbl_entity WHERE entID='$entID'"));
         
-        $arrCols = Array();
+        $arrCols = array();
+        $arrTable = array();
         try{
             $arrTable = $intra->getTableInfo($dbName, $rwEnt["entTable"]);
         }catch(Exception $e){
@@ -750,7 +752,7 @@ COLLATE='utf8_general_ci'
 ENGINE=InnoDB;
 
 DROP TABLE IF EXISTS `{$rwEnt["entTable"]}_number`;
-CREATE TABLE `tbl_request_number` (
+CREATE TABLE `{$rwEnt["entTable"]}_number` (
   `n{$entID}ID` bigint unsigned NOT NULL AUTO_INCREMENT,
   `n{$entID}InsertDate` datetime DEFAULT NULL,
   PRIMARY KEY (`n{$entID}ID`)
@@ -761,12 +763,15 @@ CREATE TABLE `tbl_request_number` (
 
         }
         
-        for($i=0; $i<count($arrTable["columns"]); $i++)
-            $arrCols[] = $arrTable["columns"][$i]["Field"];
+        //for($i=0; $i<count($arrTable["columns"]); $i++)
+        if (is_array($arrTable['columns']))
+          foreach($arrTable["columns"] as $i=>$col)
+              $arrCols[] = $col["Field"];
             //echo "<pre>";
             //print_r($arrTable);
             //print_r($arrCols);
             //echo "</pre>";
+            
         $sqlMsf = "SELECT * FROM stbl_attribute WHERE atrEntityID='$entID' 
         ORDER BY atrOrder";
         //echo $sqlMsf;

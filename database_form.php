@@ -10,7 +10,7 @@ $arrCSS[] = commonStuffRelativePath.'eiseGrid/eiseGrid.css';
 $grid = new easyGrid($oSQL
                     ,"tbl"
                     , Array(
-                            'arrPermissions' => Array('FlagWrite' => false)
+                            'arrPermissions' => Array('FlagWrite' => true)
                             , 'flagStandAlone' => false
                             )
                     );
@@ -18,6 +18,11 @@ $grid = new easyGrid($oSQL
 $grid->Columns[]=Array(
 	'field'=>"Name"
 	,'type'=>'row_id'
+);
+$grid->Columns[]=Array(
+    'field'=>"chk"
+    , 'title' => "chk"
+    , 'type' => "checkbox"
 );
 $grid->Columns[]=Array(
 	'field'=>"Name"
@@ -29,41 +34,48 @@ $grid->Columns[] = Array(
    'title' => "Rows"
    , 'field' => "Rows"
    , 'type' => "numeric"
+   , 'disabled'=>true
 );
 $grid->Columns[] = Array(
    'title' => "Data Size"
    , 'field' => "Data_length"
    , 'type' => "numeric"
+   , 'disabled'=>true
 );
 
 $grid->Columns[] = Array(
    'title' => "Index Size"
    , 'field' => "Index_length"
    , 'type' => "numeric"
+   , 'disabled'=>true
 );
 
 $grid->Columns[] = Array(
    'title' => "Created"
    , 'field' => "Create_time"
-   , 'type' => "datetime"   
+   , 'type' => "datetime" 
+   , 'disabled'=>true  
 );
 
 $grid->Columns[] = Array(
    'title' => "Updated"
    , 'field' => "Update_time"
-   , 'type' => "datetime"   
+   , 'type' => "datetime"  
+   , 'disabled'=>true 
 );
 
 $grid->Columns[] = Array(
    'title' => "Collation"
    , 'field' => "Collation"
    , 'type' => "text"
+   , 'disabled'=>true
 );
 
 $grid->Columns[] = Array(
    'title' => "Engine"
    , 'field' => "Engine"
    , 'type' => "text"
+   , 'disabled'=>true
 );
 
 $grid->Columns[] = Array(
@@ -71,21 +83,29 @@ $grid->Columns[] = Array(
    , 'field' => "Comment"
    , 'type' => "text"
    , 'width' => "100%"
+   , 'disabled'=>true
 );
 
+$arrFlags = Array();
 if ($dbName!="") {
     $sqlDB = "SHOW TABLE STATUS FROM `$dbName`";
     $rsDB = $oSQL->do_query($sqlDB);
 
     while($rwDB = $oSQL->fetch_array($rsDB)){
-      $grid->Rows[] = $rwDB;
-      //print_r($rwDB);
+        $grid->Rows[] = $rwDB;
+        //print_r($rwDB);
         if ($rwDB["Name"]=="stbl_page") $arrFlags["hasPages"] = true;
+        if ($rwDB["Name"]=="stbl_framework_version") $arrFlags["hasIntraDBSV"] = true;
+        if ($rwDB["Name"]=="stbl_version") $arrFlags["hasDBSV"] = true;
         if ($rwDB["Name"]=="stbl_entity") {
             $arrFlags["hasEntity"] = true;
         }
     }
-    $eiseIntraVersion = (int)$oSQL->d("SELECT MAX(fvrNumber) FROM `{$dbName}`.stbl_framework_version");
+    
+    if($arrFlags["hasIntraDBSV"])
+        $eiseIntraVersion = (int)$oSQL->d("SELECT MAX(fvrNumber) FROM `{$dbName}`.stbl_framework_version");
+    if($arrFlags["hasDBSV"])
+        $eiseDBSVersion = (int)$oSQL->d("SELECT MAX(verNumber) FROM `{$dbName}`.stbl_version");
     
     
 $arrActions[]= Array ("title" => "Create table"
@@ -99,35 +119,97 @@ if (isset($eiseIntraVersion) && $eiseIntraVersion < 100){
 	   , "class" => "ss_wrench_orange "
 	);
 }   
-    
+$arrActions[]= Array ("title" => "Dump Entities"
+	   , "action" => "javascript:dumpSelectedTables('{$dbName}', 'entities')"
+	   , "class" => "ss_cog_go  "
+	);   
+$arrActions[]= Array ("title" => "Dump Menu"
+	   , "action" => "javascript:dumpSelectedTables('{$dbName}', 'security')"
+	   , "class" => "ss_cog_go  "
+	);  
+$arrActions[]= Array ("title" => "Dump Selected Tables"
+       , "action" => "javascript:dumpSelectedTables('{$dbName}')"
+       , "class" => "ss_cog_go  "
+    );  
     
 }
 
 
 include eiseIntraAbsolutePath."inc-frame_top.php";
 ?>
+<style>
+.eiseIntraField label {
+    width: 34%;
+}
+.eiseIntraField .eiseIntraValue {
+    width: 62%;
+}
+</style>
 
-<h1><?php echo ($dbName!="" ? "Database $dbName" : "New Database"); ?></h1>
-
-<div class="panel">
+<form action="database_act.php" method="POST" class="eiseIntraForm">
+<fieldset class="eiseIntraMainForm"><legend><?php echo ($dbName!="" ? "Database $dbName" : "New Database"); ?></legend>
 <table width="100%">
-<form action="database_act.php" method="POST">
 <input type="hidden" name="dbName_key" value="<?php  echo $dbName ; ?>">
 <input type="hidden" name="DataAction" value="create">
 <tr>
-<td>
-<span class="field_title_top">Name:</span>
-<input type="text" name="dbName" value="<?php  echo $dbName ; ?>"><br>
+<td width="40%">
+<div class="eiseIntraField">
+<label><?php  echo $intra->translate('Name') ; ?>:</label>
+<?php echo $intra->showTextBox('dbName', $dbName) ?>
+</div>
 
+<div class="eiseIntraField">
 <input type="checkbox" name="hasPages" id="hasPages"<?php  echo ($arrFlags["hasPages"] ? " checked" : ""); ?> style="width:auto;"><label for="hasPages">Has Pages</label><br>
+</div>
+
+<div class="eiseIntraField">
 <input type="checkbox" name="hasEntity" id="hasEntity"<?php  echo ($arrFlags["hasEntity"] ? " checked" : ""); ?> style="width:auto;"><label for="hasEntity">Has Entities</label><br>
+</div>
+</td>
+<td width="40%">
+
+<?php 
+if ($arrFlags["hasDBSV"]) {
+ ?>
+<div class="eiseIntraField">
+<label><?php  echo $intra->translate('Schema Version') ; ?>:</label>
+<div class="eiseIntraValue"><?php echo $eiseDBSVersion ?></div>
+</div>
+<?php 
+}
+if ($arrFlags["hasIntraDBSV"]) {
+ ?>
+<div class="eiseIntraField">
+<label><?php  echo $intra->translate('Framework Schema Version') ; ?>:</label>
+<div class="eiseIntraValue"><?php echo $eiseIntraVersion ?></div>
+</div>
+<?php 
+}
+ ?>
+</td>
+<td width="20%">
+
+<?php 
+if ($dbName){
+ ?>
+<div class="eiseIntraField">
+<label>Dump options</label>
+<div class="eiseIntraValue">
+<input type="checkbox" id="flagNoData">No data<br>
+<input type="checkbox" id="flagDonwloadAsDBSV">Download as DBSV script<br>
+</div>
+</div>
+<?php 
+}
+ ?>
+
 </td>
 </tr>
 <?php
 if ($dbName!="") {
 ?>
 <tr>
-<td>
+<td colspan=3>
 <?php
 $grid->Execute();
 ?>
@@ -137,7 +219,7 @@ $grid->Execute();
 } else {
 ?>
 <tr>
-<td>
+<td colspan=3>
 <span class="field_title_top">Admin's password:</span>
 <input type="password" name="usrPass" value=""><br>
 
@@ -151,9 +233,10 @@ $grid->Execute();
 <td style="text-align:center;"><input value="Save" type="submit" onclick="return confirm('Are you sure you\'d like to <?php  
 echo ($dbName=="" ? "create" : "update") ; ?> the database?')"></td>
 </tr>
-</form>
+
 </table>
-</div>
+</fieldset>
+</form>
 <script>
 function CreateNewTable(){
  var tbl = prompt('Please enter table name:', 'tbl_');
@@ -161,6 +244,33 @@ function CreateNewTable(){
     location.href="codegen_form.php?toGen=newtable&dbName=<?php  echo $dbName ; ?>&tblName="+tbl;
  }
 }
+
+function dumpSelectedTables(dbName, what='tables'){
+
+    var strTablesToDump = '';
+    if (what=='tables'){
+        $("input[name='chk_chk[]']").each(function(){
+            if (this.checked){
+                strTablesToDump += (strTablesToDump!='' ? '|' : '')+$(this).parent().find('input[name="Name[]"]').val();
+            }
+        });
+
+        if (strTablesToDump==''){
+            alert('Nothing\'s selected');
+            return;
+        }
+    }
+
+    var strURL = "database_act.php?DataAction=dump&what="+what+"&dbName="+dbName+
+        (what=='tables' ? "&strTables="+encodeURIComponent(strTablesToDump) : '')+
+        ($('#flagNoData')[0].checked ? '&flagNoData=1' : '')+
+        ($('#flagDonwloadAsDBSV')[0].checked ? '&flagDonwloadAsDBSV=1' : '');
+    location.href = strURL;
+
+}
+
+
+
 </script>
 
 

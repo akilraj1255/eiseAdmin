@@ -5,7 +5,8 @@ $atrID  = (isset($_POST['atrID']) ? $_POST['atrID'] : $_GET['atrID'] );
 $atrEntityID  = (isset($_POST['atrEntityID']) ? $_POST['atrEntityID'] : $_GET['atrEntityID'] );
 $DataAction  = (isset($_POST['DataAction']) ? $_POST['DataAction'] : $_GET['DataAction'] );
 
-$oSQL->dbname=(isset($_POST["dbName"]) ? $_POST["dbName"] : $_GET["dbName"]);
+$oSQL->dbname = isset($_POST["dbName"]) ? $_POST["dbName"] : $_GET["dbName"];
+$oSQL->select_db($oSQL->dbname);
 
 if($intra->arrUsrData['FlagWrite']){
 

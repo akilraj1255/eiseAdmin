@@ -21,7 +21,7 @@ $rsTab = $oSQL->do_query($sqlTab);
 <ul>
 <?php
 $arrFlags = Array();
-while ($rwTab = mysql_fetch_array($rsTab)) {
+while ($rwTab = $oSQL->fa($rsTab)) {
 ?>
    <li id="<?php  echo $rwDB["Database"]."|".$rwTab[0] ; ?>"><a target='pane' 
       href="table_form.php?dbName=<?php  echo $rwDB["Database"] ; ?>&tblName=<?php  echo $rwTab[0] ; ?>"><span><?php echo($rwTab[0]) ?></span></a></li>

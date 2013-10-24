@@ -2,7 +2,7 @@
 include "common/auth.php";
 
 $oSQL->dbname=(isset($_POST["dbName"]) ? $_POST["dbName"] : $_GET["dbName"]);
-$dbName = $oSQL->dbname;
+$oSQL->select_db($oSQL->dbname);
 
 $rolID = (isset($_POST["rolID"]) ? $_POST["rolID"] : $_GET["rolID"]);
 
@@ -58,7 +58,7 @@ switch ($_POST["DataAction"]){
        }
        
        SetCookie("UserMessage", "Matrix is updated");
-       redirect("$PHP_SELF?dbName=$dbName&rolID=$rolID");
+       header("Location: {$_SERVER['PHP_SELF']}?dbName=$$oSQL->dbname&rolID=$rolID");
        
        die();
        break;

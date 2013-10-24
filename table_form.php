@@ -1,7 +1,7 @@
 <?php 
 include "common/auth.php";
 
-$oSQL->dbname=$_GET["dbName"];
+$oSQL->select_db($_GET["dbName"]);
 
 $pane = (isset($_GET["pane"]) 
     ? $_GET["pane"] 
@@ -10,7 +10,7 @@ $pane = (isset($_GET["pane"])
 
 SetCookie("pane", $pane);
         
-$dbName = $oSQL->dbname;
+$dbName = $_GET["dbName"];
 $tblName = $_GET["tblName"];
 
 $arrJS[] = jQueryUIRelativePath."js/jquery-ui-1.8.16.custom.min.js";

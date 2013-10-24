@@ -10,50 +10,43 @@ include ("config.php");
 $js_path = "";
 $easyAdmin = true;
 
-function dbAuth(){
-   
-   GLOBAL $intra;
-   $oSQL = $intra->oSQL;
-   
-    if (!$_SESSION["DBHOST"] && !$_SESSION["usrID"] && !$_SESSION["DBPASS"]){
-        dbNoAuth("Bad credentials");
-        return false;
-    }
-   
-    $oSQL->dbhost = $_SESSION["DBHOST"];
-    $oSQL->dbuser = $_SESSION["usrID"];
-    $oSQL->dbpass = $_SESSION["DBPASS"];
-    $oSQL->dbname = (!$_SESSION["DBNAME"] ? 'mysql' : $_SESSION["DBNAME"]) ;
-   
-    try{
-        
-        $oSQL->connect(); 
-        
-    } catch(Exception $e){
-        
-        dbNoAuth($e->getMessage());
-        
-    }
-
-}
-
-function dbNoAuth($message="Authentication error"){
-    
-    header("Location: login.php?error=".urlencode($message));
-    die();
-    
-}
-
-$oSQL = new sql($DBHOST, $DBUSER, $DBPASS, $DBNAME, false, CP_UTF8);
-$intra = new eiseIntra($oSQL);
-
+$intra = new eiseIntra();
 $intra->session_initialize();
 
-if (!$flagNoAuth) {
-    $arrAuth = dbAuth();
-}
+if (!$flagNoAuth){
+    /*
+    echo '<pre>';
+    print_r($_SESSION);
+    print_r($intra);
+    die();
+    //*/
+    if (!$intra->usrID){
 
-$intra->usrID = $intra->oSQL->dbuser;
+        header("Location: login.php");
+        die();
+        
+    }
+
+    if (!$_SESSION["DBHOST"] && !$_SESSION["DBPASS"]){
+        header("Location: login.php?error=".urlencode("Database not specified"));
+        die();
+    }
+
+    try {
+
+        $intra->oSQL = new eiseSQL($_SESSION["DBHOST"], $intra->usrID, $_SESSION["DBPASS"], (!$_SESSION["DBNAME"] ? 'mysql' : $_SESSION["DBNAME"]));
+        $intra->oSQL->connect();
+        
+    } catch(Exception $e) {
+        
+        header("Location: login.php?error=".urlencode($e->getMessage()));
+        die();
+        
+    }
+    
+}
+$oSQL = $intra->oSQL;
+
 $intra->arrUsrData["FlagWrite"] = true;
 
 $intra->checkLanguage();

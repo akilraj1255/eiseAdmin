@@ -4,6 +4,7 @@ include 'common/auth.php';
 $DataAction = $_GET["DataAction"] ? $_GET["DataAction"] : $_POST["DataAction"];
 $dbName = $_GET["dbName"] ? $_GET["dbName"] : $_POST["dbName"];
 $oSQL->dbname = $dbName;
+$oSQL->select_db($dbName);
 
 include commonStuffAbsolutePath.'eiseGrid/inc_eiseGrid.php';
 $arrJS[] = commonStuffRelativePath.'eiseGrid/eiseGrid.js';
