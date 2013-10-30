@@ -61,9 +61,18 @@ $arrActions[]= Array ("title" => "New script"
 	);
 
 $arrActions[]= Array ("title" => "Repair"
-	   , "action" => "page_form.php?dbName=$dbName&DataAction=repair"
-	   , "class"=> "ss_wrench"
-	);	
+     , "action" => "page_form.php?dbName=$dbName&DataAction=repair"
+     , "class"=> "ss_wrench"
+  );  
+
+$arrActions[]= Array ("title" => "Get dump"
+     , "action" => "database_act.php?DataAction=dump&what=security&dbName={$dbName}&flagDonwloadAsDBSV=0"
+     , "class"=> "ss_cog_edit"
+  );
+$arrActions[]= Array ("title" => "Download dump"
+	   , "action" => "database_act.php?DataAction=dump&what=security&dbName={$dbName}&flagDonwloadAsDBSV=1"
+	   , "class"=> "ss_cog_go"
+	);
 
 
 

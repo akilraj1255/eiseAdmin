@@ -42,14 +42,14 @@ case 'dump':
             $sqlVer = 'SELECT MAX(verNumber)+1 FROM stbl_version';
             $verNumber = $oSQL->d($sqlVer);
         }
-        $fileName = (!empty($verNumber) ? sprintf('%3d', $verNumber) : 'dump').'_'.
+        $fileName = (!empty($verNumber) ? sprintf('%03d', $verNumber) : 'dump').'_'.
             ($_GET['what']=='tables' ? implode('-', $arrTablesToDump) : $_GET['what']).'.sql';
         header('Content-type: application/octet-stream;');
         header("Content-Disposition: attachment;filename={$fileName}");
         echo $strTables;
     } else {
         $arrActions[]= Array ("title" => "Back to form"
-           , "action" => "database_form.php?dbName=".urlencode($dbName)
+           , "action" => ($_SERVER['HTTP_REFERER'] ? $_SERVER['HTTP_REFERER'] : "database_form.php?dbName=".urlencode($dbName))
            , "class" => "ss_arrow_left"
         );  
         include(eiseIntraAbsolutePath.'inc-frame_top.php');
@@ -188,7 +188,10 @@ case "convert":
     case 'removeDBSVdelta':
         // obtain updated but not versioned scripts
         $oSQL->q("START TRANSACTION");
+/*        
         $sqlVER = "DELETE FROM stbl_version WHERE verFlagVersioned=0 AND LENGTH(verDesc)>0 AND verNumber>1 ORDER BY verNumber";
+*/
+        $sqlVER = "UPDATE stbl_version SET verFlagVersioned=1 WHERE verFlagVersioned=0 AND LENGTH(verDesc)>0 AND verNumber>1 ORDER BY verNumber";
         $oSQL->q($sqlVER);
         $oSQL->q("COMMIT");
         SetCookie("UserMessage", "Unversioned DBSV scripts deleted: ".$oSQL->a());
