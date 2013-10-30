@@ -1,7 +1,9 @@
 <?php 
 include "common/auth.php";
+include "common/common.php";
 
 $dbName = (isset($_POST["dbName"]) ? $_POST["dbName"] : $_GET["dbName"]);
+$oSQL->select_db($dbName);
 
 include commonStuffAbsolutePath.'eiseGrid/inc_eiseGrid.php';
 $arrJS[] = commonStuffRelativePath.'eiseGrid/eiseGrid.js';
@@ -131,6 +133,16 @@ $arrActions[]= Array ("title" => "Dump Selected Tables"
        , "action" => "javascript:dumpSelectedTables('{$dbName}')"
        , "class" => "ss_cog_go  "
     );  
+if ($eiseDBSVersion){
+    $arrActions[]= Array ("title" => "Get DBSV delta"
+       , "action" => "database_act.php?DataAction=getDBSVdelta&dbName={$dbName}"
+       , "class" => "ss_cog_add"
+    ); 
+    $arrActions[]= Array ("title" => "Remove DBSV delta"
+       , "action" => "database_act.php?DataAction=removeDBSVdelta&dbName={$dbName}"
+       , "class" => "ss_cog_delete confirm"
+    ); 
+}
     
 }
 
@@ -165,6 +177,22 @@ include eiseIntraAbsolutePath."inc-frame_top.php";
 <div class="eiseIntraField">
 <input type="checkbox" name="hasEntity" id="hasEntity"<?php  echo ($arrFlags["hasEntity"] ? " checked" : ""); ?> style="width:auto;"><label for="hasEntity">Has Entities</label><br>
 </div>
+<?php 
+if ($arrFlags["hasEntity"]){
+
+    foreach($arrEntityTables as $tableName){
+        $strEntityHashes .= getTableHash($oSQL, $tableName);
+    }
+    ?>
+<div class="eiseIntraField">
+<label><?php  echo $intra->translate('Entity Tables Hash') ; ?>:</label>
+<div class="eiseIntraValue"><?php echo md5($strEntityHashes) ?></div>
+</div>
+    <?php
+
+}
+ ?>
+
 </td>
 <td width="40%">
 
@@ -245,7 +273,10 @@ function CreateNewTable(){
  }
 }
 
-function dumpSelectedTables(dbName, what='tables'){
+function dumpSelectedTables(dbName, what){
+
+    if (typeof(what)=='undefined')
+        what = 'tables';
 
     var strTablesToDump = '';
     if (what=='tables'){
@@ -268,8 +299,6 @@ function dumpSelectedTables(dbName, what='tables'){
     location.href = strURL;
 
 }
-
-
 
 </script>
 

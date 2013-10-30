@@ -19,26 +19,10 @@ case 'dump':
     
     switch ($_GET['what']) {
         case 'security':
-            $arrTablesToDump = Array(
-                "stbl_page_role"
-                , "stbl_page"
-                , "stbl_role"
-                );
+            $arrTablesToDump = $arrMenuTables;
             break;
         case 'entities':
-            $arrTablesToDump = Array(
-                    "stbl_action"
-                    , "stbl_action_status"
-                    , "stbl_action_attribute"
-                    , "stbl_attribute"
-                    , "stbl_entity"
-                    , "stbl_page"
-                    , "stbl_role_action"
-                    , "stbl_status"
-                    , "stbl_status_attribute"
-                    , "stbl_framework_version"
-                    , "stbl_uom"
-                );
+            $arrTablesToDump = $arrEntityTables;
             break;
         case 'tables':
             $arrTablesToDump = explode('|', $_GET['strTables']);
@@ -153,9 +137,63 @@ case "convert":
           echo "\r\n";
        }
     
-    echo "</pre>";
+        echo "</pre>";
     
-break;
+        break;
+
+
+    case 'getDBSVdelta':
+        
+        // obtain updated but not versioned scripts
+        $sqlVER = "SELECT * FROM stbl_version WHERE verFlagVersioned=0 AND LENGTH(verDesc)>0 AND verNumber>1 ORDER BY verNumber";
+        $rsVER = $oSQL->q($sqlVER);
+        if($oSQL->n($rsVER)==0){
+            SetCookie("UserMessage", "No unversioned DBSV scripts found to download your delta");
+            header("Location: database_form.php?dbName=$dbName");
+            die();
+        }
+
+        if( ini_get('zlib.output_compression') ) { 
+            ini_set('zlib.output_compression', 'Off'); 
+        }
+
+        header('Pragma: public'); 
+        header("Expires: Sat, 26 Jul 1997 05:00:00 GMT");                  // Date in the past    
+        header('Last-Modified: ' . gmdate('D, d M Y H:i:s') . ' GMT'); 
+        header('Cache-Control: no-store, no-cache, must-revalidate');     // HTTP/1.1 
+        header('Cache-Control: pre-check=0, post-check=0, max-age=0');    // HTTP/1.1 
+        header("Pragma: no-cache"); 
+        header("Expires: 0"); 
+        header('Content-Transfer-Encoding: none'); 
+
+        // create archive
+        $zip = new zipfile();
+        $verMin = 1000; $verMax = '1';
+        while ($rwVER = $oSQL->f($rsVER)) {
+            $verMin = min($verMin, ($rwVER['verNumber']));
+            $verMax = max($verMax, ($rwVER['verNumber']));
+            $fileName = sprintf('%03d', $rwVER['verNumber']).'-'.substr($rwVER['verDesc'], 0, 25).'.sql';
+            $zip->addFile(
+                $rwVER['verDesc']
+                , $fileName);
+        }
+        $fileName = ($verMin!=$verMax ? sprintf('%03d', $verMin).'-' : '') . sprintf('%03d', $verMax) . '-SQL_scripts.zip';
+        header("Content-Type: application/zip");
+        header('Content-Disposition: attachment; filename="' . $fileName . '"');
+
+        // output zip file
+        echo $zip->file();
+        die();
+
+    case 'removeDBSVdelta':
+        // obtain updated but not versioned scripts
+        $oSQL->q("START TRANSACTION");
+        $sqlVER = "DELETE FROM stbl_version WHERE verFlagVersioned=0 AND LENGTH(verDesc)>0 AND verNumber>1 ORDER BY verNumber";
+        $oSQL->q($sqlVER);
+        $oSQL->q("COMMIT");
+        SetCookie("UserMessage", "Unversioned DBSV scripts deleted: ".$oSQL->a());
+        header("Location: database_form.php?dbName=$dbName");
+        die();
 
 case "create":
 
@@ -181,6 +219,7 @@ if ($_POST["dbName_key"]==""){
 CREATE TABLE `stbl_version` (
     `verNumber` INT UNSIGNED NOT NULL,
     `verDesc` TEXT NULL,
+    `verFlagVersioned` TINYINT(4) NOT NULL DEFAULT '0',
     `verDate` DATETIME NULL DEFAULT NULL,
     PRIMARY KEY (`verNumber`)
 )
