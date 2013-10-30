@@ -6,6 +6,7 @@ $arrJS[] = commonStuffRelativePath.'eiseGrid/eiseGrid.js';
 $arrCSS[] = commonStuffRelativePath.'eiseGrid/eiseGrid.css';
 
 $oSQL->dbname=(isset($_POST["dbName"]) ? $_POST["dbName"] : $_GET["dbName"]);
+$oSQL->select_db($oSQL->dbname);
 $dbName = $oSQL->dbname;
 
 //$_DEBUG = true;

@@ -3,6 +3,7 @@ include "common/auth.php";
 
 $oSQL->dbname=(isset($_POST["dbName"]) ? $_POST["dbName"] : $_GET["dbName"]);
 $oSQL->select_db($oSQL->dbname);
+$dbName = $oSQL->dbname;
 
 $rolID = (isset($_POST["rolID"]) ? $_POST["rolID"] : $_GET["rolID"]);
 
