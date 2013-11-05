@@ -738,7 +738,7 @@ function newItemID($prefix, $datefmt="ym", $numlength=5){
     $oSQL->q($sqlNumber);
     $number = $oSQL->i();
     
-    $oSQL->q("DELETE FROM {$this->rwEnt["entTable"]}_number");
+    $oSQL->q("DELETE FROM {$this->rwEnt["entTable"]}_number WHERE n{$this->entID}ID < {$number}");
     
     $strID = "{$prefix}".date($datefmt).substr(sprintf("%0{$numlength}d", $number), -1*$numlength);
     
@@ -868,6 +868,31 @@ function getActionPhaseTitle($phase){
             
     }
     
+}
+
+function getEntityTableALTER($atrID, $atrType, $action){
+
+    $sqlRet = array();
+
+    $strDBType = $this->oSQL->arrIntra2DBTypeMap[$atrType];
+    if (!$strDBType)
+        return false;
+
+    switch ($action){
+        case 'add':
+            $sqlRet[] = "ALTER TABLE `{$this->rwEnt['entTable']}` ADD COLUMN `{$atrID}` {$strDBType} NULL DEFAULT NULL";
+            $sqlRet[] = "ALTER TABLE `{$this->rwEnt['entTable']}_log` ADD COLUMN `l{$atrID}` {$strDBType} NULL DEFAULT NULL";
+            break;
+        case 'change':
+            $sqlRet[] = "ALTER TABLE `{$this->rwEnt['entTable']}` CHANGE COLUMN `{$atrID}` `{$atrID}` {$strDBType} NULL DEFAULT NULL";
+            $sqlRet[] = "ALTER TABLE `{$this->rwEnt['entTable']}_log` CHANGE COLUMN `l{$atrID}` `l{$atrID}` {$strDBType} NULL DEFAULT NULL";
+            break;
+        default:
+            return false;
+    }
+
+    return $sqlRet;
+
 }
 
 
