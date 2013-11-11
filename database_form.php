@@ -104,8 +104,12 @@ if ($dbName!="") {
         }
     }
     
-    if($arrFlags["hasIntraDBSV"])
+    if($arrFlags["hasIntraDBSV"]){
         $eiseIntraVersion = (int)$oSQL->d("SELECT MAX(fvrNumber) FROM `{$dbName}`.stbl_framework_version");
+        include_once ( eiseIntraAbsolutePath."inc_dbsv.php" );
+        $dbsv = new eiseDBSV($oSQL, eiseIntraAbsolutePath.".SQL");
+        $eiseIntraVersionAvailable = $dbsv->getNewVersion();
+    }
     if($arrFlags["hasDBSV"])
         $eiseDBSVersion = (int)$oSQL->d("SELECT MAX(verNumber) FROM `{$dbName}`.stbl_version");
     
@@ -209,7 +213,11 @@ if ($arrFlags["hasIntraDBSV"]) {
  ?>
 <div class="eiseIntraField">
 <label><?php  echo $intra->translate('Framework Schema Version') ; ?>:</label>
-<div class="eiseIntraValue"><?php echo $eiseIntraVersion ?></div>
+<div class="eiseIntraValue"><?php echo $eiseIntraVersion .'/'.$eiseIntraVersionAvailable.(
+    $eiseIntraVersion!=$eiseIntraVersionAvailable
+    ? '(upgrade required)'
+    : ''
+); ?></div>
 </div>
 <?php 
 }

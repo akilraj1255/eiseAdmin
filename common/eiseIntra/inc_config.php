@@ -24,7 +24,7 @@ define ("imagesRelativePath", commonStuffRelativePath."images/");
 define ("eiseIntraCookiePath", "/");
 define ("eiseIntraCookieExpire", time()+60*60*24*30); // 30 days
 
-
+define ('eiseIntraUserMessageCookieName', 'UserMessage');
 
 define("prgDT", "/([0-9]{1,2})[\.\-\/]([0-9]{1,2})[\.\-\/]([0-9]{4})/i");
 $prgDT = prgDT;

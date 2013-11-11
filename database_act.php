@@ -206,7 +206,9 @@ if ($_POST["dbName_key"]==""){
    
    //print_r($_POST);
    
-   $frameworkDBVersion = 78;
+   include_once ( eiseIntraAbsolutePath."inc_dbsv.php" );
+    $dbsv = new eiseDBSV($oSQL, eiseIntraAbsolutePath.".SQL");
+   $frameworkDBVersion = $dbsv->getNewVersion();
    
    echo "Database initial script for framework version ".$frameworkDBVersion."\r\n";
    
@@ -896,24 +898,13 @@ case "upgrade":
     //$oSQL->startProfiling();
     for ($i = 0; $i < ob_get_level(); $i++) { ob_end_flush(); }
     ob_implicit_flush(1);
-    echo str_repeat(" ", 256)."<pre>"; ob_flush();
+    echo str_repeat(" ", 4096)."<pre>"; ob_flush();flush();
     
-    $dbsv = new eiseDBSV($oSQL, '');
+    $dbsv = new eiseDBSV($oSQL, eiseIntraAbsolutePath.".SQL");
     
     $dbsv->ExecuteDBSVFramework($dbName);    
     
     die();
-    
-    echo "Upgrading entities...\r\n";ob_flush();
-/*
-    $sqlEnt = "SELECT * FROM stbl_entity";
-    $rsEnt = $oSQL->q($sqlEnt);
-    while($rwEnt = $oSQL->f($rsEnt)){
-        $ent = new eiseEntity($oSQL, $intra, $rwEnt["entID"]);
-        $ent->upgrade_eiseIntra();
-    }
-*/
-    break;
 
 }
 
