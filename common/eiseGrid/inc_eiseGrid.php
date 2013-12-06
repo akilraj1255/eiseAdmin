@@ -6,23 +6,23 @@ function __construct($oSQL
     , $arrConfig
     ){
     
+    GLOBAL $intra;
+
     $this->conf = Array(                    //defaults for eiseGrid
         'titleDel' => "Del" // column title for Del
         , "titleAdd" => "Add >>" // column title for Add
-        , "titleColor" => "Color" // column title for Color picker
-        , 'flagNoTitle' => false // if set, no title displayed
-        , 'showControlBar' => false
         //, 'controlBarButtons' => 'add|insert|moveup|movedown|save'
         , 'extraInputs' => Array("DataAction"=>"update")
         , 'urlToSubmit' => $_SERVER["PHP_SELF"]
-        , 'dateFormat' => "d.m.Y" // 
-        , 'timeFormat' => "h:i" // 
+        , 'dateFormat' => (isset($intra->conf['dateFormat']) ? $intra->conf['dateFormat'] : "d.m.Y")  
+        , 'timeFormat' => (isset($intra->conf['timeFormat']) ? $intra->conf['timeFormat'] : "H:i") 
         , 'decimalPlaces' => "2"
-        , 'decimalSeparator' => "."
-        , 'thousandsSeparator' => ","
+        , 'decimalSeparator' => (isset($intra->conf['decimalSeparator']) ? $intra->conf['decimalSeparator'] : ".")
+        , 'thousandsSeparator' => (isset($intra->conf['thousandsSeparator']) ? $intra->conf['thousandsSeparator'] : ",")
         , 'totalsTitle' => 'Totals'
         , 'noRowsTitle' => 'Nothing found'
         , 'arrPermissions' => Array("FlagWrite" => true)
+        , 'Tabs3DCookieName' => $strName.'_tabs3d'
     );
     
     $this->conf = array_merge($this->conf, $arrConfig);
@@ -65,6 +65,19 @@ function Execute($allowEdit=true) {
         
     }
     
+    if(count($this->Tabs3D)>0){
+        $strRet .= "<div id=\"{$this->name}_tabs3d\">\r\n";
+        $strRet .= "<ul>\r\n";
+        foreach($this->Tabs3D as $ix=>$tab){
+            $strRet .= "<li><a href=\"#{$this->name}_tabs3d_{$tab['ID']}\">{$tab['title']}</a></li>\r\n"; 
+        }
+        $strRet .= "</ul>\r\n";
+        foreach($this->Tabs3D as $ix=>$tab){
+            $strRet .= "<div id=\"{$this->name}_tabs3d_{$tab['ID']}\" class=\"eg_pseudotabs\"></div>\r\n"; 
+    }
+    }
+    
+
     $strRet .= "<table>\r\n";
     $strHead = "<thead>\r\n";
     $strHead .= "<tr>\r\n";
@@ -77,6 +90,8 @@ function Execute($allowEdit=true) {
         if ((int)$this->permissions["FlagWrite"]==0){
             $this->Columns[$ix]['static'] = true;
         }
+        if ($col['class'])
+            $this->Columns[$ix]['staticClass'] = ' '.preg_replace("/\[.+?\]/", "", $col['class']);
         
         if ($col["title"]!=""){
             $col['style'] = 
@@ -91,7 +106,7 @@ function Execute($allowEdit=true) {
                 ($col["style"]!="" 
                 ? " style=\"{$col['style']}\""
                 : "").
-            " class=\"{$this->name}_{$col['field']}\"".
+            " class=\"{$this->name}_{$col['field']}".($this->Columns[$ix]['staticClass'])."\"".
             ">".htmlspecialchars($col["title"]).
                 ($col['mandatory'] ? "*" : "")."</th>\r\n";
             
@@ -243,6 +258,10 @@ function Execute($allowEdit=true) {
     $jsonConfig = json_encode($arrConfig);
     $strRet .= "<input type=\"hidden\" name=\"inp_".$this->name."_config\" id=\"inp_".$this->name."_config\" value=\"".htmlspecialchars($jsonConfig)."\">";
     
+    if(count($this->Tabs3D)>0){
+        $strRet .= "</div>\r\n";        
+    }
+
     
     $strRet .= "</div>\r\n";
     
@@ -259,10 +278,19 @@ function paintCell($col, $ixCol, $ixRow, $rowID=""){
     $val = $ixRow!==null ? $row[$field] : $col['default'];
     $cell = $col;
     
-    
+    $arrSuffix = array();
+    if (count($this->Tabs3D)>0 && ($ixRow===null || is_array($val))) {
+        foreach($this->Tabs3D as $ix=>$tab){
+            $arrSuffix[] = $tab['ID'];
+        }
+        $arrVal = $val;
+    } else {
+        $arrSuffix = array('');
+        $arrVal = array($val);
+    }
     
     if ($ixRow===null){ //for template row: all calcualted class are grounded, static/disabled set to 0, href grounded
-        $cell['class'] = preg_replace("/\[.+?\]/", "", $cell['class']);
+        $cell['class'] = $cell['staticClass'];
         $cell['static'] = (is_string($cell['static']) ? 0 : $cell['static']);
         $cell['disabled'] = (is_string($cell['disabled']) ? 0 : $cell['disabled']) ;
         $cell['href'] = "" ;
@@ -283,18 +311,17 @@ function paintCell($col, $ixCol, $ixRow, $rowID=""){
         }
     
     if ((int)$cell['disabled'])
-        $cell['class'] = "eg_disabled";
+        $cell['class'] .= " eg_disabled";
     
     $class = "eg_".$col['type'].($cell['class'] != "" ? " ".$cell['class'] : '');
-    
-    //echo "<pre>";
-    //print_r($cell);
     
     $strCell = "";
     $strCell .= "\t<td class=\"{$this->name}_{$field} {$class}\"".(
             $cell["style"]!="" 
             ? " style=\"{$cell["style"]}\""
             : "").">";
+
+    // hidden inputs are to be repeated once
     if ($ixCol==0){
         if (is_array($this->hiddenInputs))
         foreach($this->hiddenInputs as $hidden_field=>$hidden_col){
@@ -306,106 +333,131 @@ function paintCell($col, $ixCol, $ixRow, $rowID=""){
         }
         
     }
-    
-    //pre-format value
-    switch($cell['type']){
-        case "date":
-            $val = $this->DateSQL2PHP($val, $this->conf['dateFormat']);
-            break;
-        case "datetime":
-            $val = $this->DateSQL2PHP($val, $this->conf['dateFormat']." ".$this->conf['timeFormat']);
-            break;
-        case "money":
-        case "float":
-        case "double":
-        case "numeric":
-        case "number":
-        case "integer":
-            $cell['decimalPlaces'] = isset($cell['decimalPlaces']) 
-                ? $cell['decimalPlaces'] 
-                : (in_array($cell['type'], Array('numeric','number','integer')) 
-                    ? 0
-                    : $this->conf['decimalPlaces']);
-            $val = round($val, $cell['decimalPlaces']);
-            $val = number_format($val, $cell['decimalPlaces'], $this->conf['decimalSeparator'], $this->conf['thousandsSeparator']);
-            break;
-        default:
-            break;
-    }
-    
-    //if cell is disabled, static, or there's a HREF, we make hidden input and text value
-    if ((int)$cell['static'] || (int)$cell['disabled'] || $cell['href']!=""){
-        
-        $aopen = "";$aclose = "";
-        if ($cell['href']!=""){
-            $aopen = "<a href=\"{$cell['href']}\">";
-            $aclose = "</a>";
+
+    // for 3d grid roll thru suffixes array
+    foreach($arrSuffix as $suffix){
+
+        $_val = ($suffix ? $val[$suffix] : $val);
+        $_field = ($suffix ? $field."[{$suffix}]" : $field);
+        $classStr = ($suffix ? "eg_3d eg_3d_{$suffix}" : '');
+        $classAttr = ($suffix ? ' class="'.$classStr.'"' : '');
+
+        //pre-format value
+        if ($_val!==null){
+            switch($cell['type']){
+                case "date":
+                    $_val = $this->DateSQL2PHP($_val, $this->conf['dateFormat']);
+                    break;
+                case "datetime":
+                    $_val = $this->DateSQL2PHP($_val, $this->conf['dateFormat']." ".$this->conf['timeFormat']);
+                    break;
+                case "money":
+                case "float":
+                case "double":
+                case "real":
+                case "numeric":
+                case "number":
+                case "integer":
+                    $cell['decimalPlaces'] = isset($cell['decimalPlaces']) 
+                        ? $cell['decimalPlaces'] 
+                        : (in_array($cell['type'], Array('numeric','number','integer')) 
+                            ? 0
+                            : $this->conf['decimalPlaces']);
+                    $_val = round($_val, $cell['decimalPlaces']);
+                    $_val = number_format($_val, $cell['decimalPlaces'], $this->conf['decimalSeparator'], $this->conf['thousandsSeparator']);
+                    break;
+                default:
+                    break;
+            }
         }
         
-        $strCell .= "<input type=\"hidden\" name=\"{$field}[]\" value=\"".htmlspecialchars($val)."\">";
-        switch($col['type']){
-            case "boolean":
-            case "checkbox":
-                $strCell .= "<input type=\"checkbox\" name=\"{$field}_chk[]\"".($val==true ? " checked" : "")." disabled>";
+        //if cell is disabled, static, or there's a HREF, we make hidden input and text value
+        if ((int)$cell['static'] || (int)$cell['disabled'] || $cell['href']!=""){
+            
+            $aopen = "";$aclose = "";
+            if ($cell['href']!=""){
+                $aopen = "<a href=\"{$cell['href']}\">";
+                $aclose = "</a>";
+            }
+            
+            $strCell .= "<input type=\"hidden\" name=\"{$_field}[]\" value=\"".htmlspecialchars($_val)."\">";
+            switch($col['type']){
+                case "boolean":
+                case "checkbox":
+                    $strCell .= "<input{$classAttr} type=\"checkbox\" name=\"{$_field}_chk[]\"".($_val==true ? " checked" : "")." disabled>";
+                    break;
+                case "combobox":
+                case "ajax_dropdown":
+                    $strCell .= "<div{$classAttr}>".$aopen.$this->getSelectValue($cell, $row).$aclose."</div>";
+                    break;
+                case "textarea":
+                    $strCell .= "<div{$classAttr}>".$aopen.str_replace("\r\n", "<br>", htmlspecialchars($_val)).$aclose."</div>";
+                    break;
+                case "html":
+                    $strCell .= "<div{$classAttr}>".$aopen.$_val.$aclose."</div>";
+                    break;
+                default:
+                    $strCell .= "<div{$classAttr}>".$aopen.htmlspecialchars($_val).$aclose."</div>";
                 break;
-            case "combobox":
-                $strCell .= "<div>".$aopen.$this->getSelectValue($cell, $row).$aclose."</div>";
-                break;
-            case "textarea":
-                $strCell .= "<div>".$aopen.str_replace("\r\n", "<br>", htmlspecialchars($val)).$aclose."</div>";
-                break;
-			case "html":
-				$strCell .= "<div>".$aopen.$val.$aclose."</div>";
-				break;
-            default:
-                $strCell .= "<div>".$aopen.htmlspecialchars($val).$aclose."</div>";
-            break;
-        }
+            }
+            
+        } else { //display input and stuff
         
-    } else { //display input and stuff
-    
-        switch($col['type']){
-            case "order":
-                $strCell .= "<input type=\"hidden\" name=\"{$field}[]\" value=\"".htmlspecialchars($val)."\"><div><span>".htmlspecialchars($val)."</span>.</div>";
-                break;
-            case "text":
-                $strCell .= "<input type=\"text\" name=\"{$field}[]\" value=\"".htmlspecialchars($val)."\">";
-                break;
-            case "textarea":
-                $strCell .= "<input type=\"hidden\" name=\"{$field}[]\" value=\"".htmlspecialchars($val)."\">";
-                $strCell .= "<div contenteditable='true' class=\"eg_editor\">".str_replace("\r\n", "<br>", htmlspecialchars($val))."</div>";
-                break;
-            case "boolean":
-            case "checkbox":
-                $strCell .= "<input type=\"hidden\" name=\"{$field}[]\" value=\"".htmlspecialchars($val)."\">";
-                $strCell .= "<input type=\"checkbox\" name=\"{$field}_chk[]\"".($val==true ? " checked" : "").">";
-                break;
-            case "combobox":
-            case "select":
-                $strCell .= "<input type=\"hidden\" name=\"{$field}[]\" value=\"".htmlspecialchars($val)."\">";
-                $strCell .= "<input type=\"text\" name=\"{$field}_text[]\" value=\"".htmlspecialchars($this->getSelectValue($cell, $row))."\">";
-                if ($ixRow===null){ //paint floating select
-                    $strCell .= "<select id=\"select_{$field}\" class=\"eg_floating_select\">\r\n";
-                    $strCell .= ($cell['defaultText']!="" ? "\t<option value=\"\">{$cell['defaultText']}\r\n" : "");
-                    foreach($cell['arrValues'] as $optValue => $optText){
-                        $strCell .= "\t<option value=\"".htmlspecialchars($optValue)."\">".htmlspecialchars($optText)."\r\n";
+            switch($col['type']){
+                case "order":
+                    $strCell .= "<input type=\"hidden\" name=\"{$_field}[]\" value=\"".htmlspecialchars($_val).
+                        "\"><div{$classAttr}><span>".htmlspecialchars($_val)."</span>.</div>";
+                    break;
+                case "text":
+                    $strCell .= "<input{$classAttr} type=\"text\" name=\"{$_field}[]\" value=\"".htmlspecialchars($_val)."\">";
+                    break;
+                case "textarea":
+                    $strCell .= "<input type=\"hidden\" name=\"{$_field}[]\" value=\"".htmlspecialchars($_val)."\">";
+                    $strCell .= "<div contenteditable='true' class=\"eg_editor {$classStr}\">".str_replace("\r\n", "<br>", htmlspecialchars($_val))."</div>";
+                    break;
+                case "boolean":
+                case "checkbox":
+                    $strCell .= "<input type=\"hidden\" name=\"{$_field}[]\" value=\"".htmlspecialchars($_val)."\">";
+                    $strCell .= "<input{$classAttr} type=\"checkbox\" name=\"{$_field}_chk[]\"".($_val==true ? " checked" : "").">";
+                    break;
+                case "combobox":
+                case "select":
+                    $strCell .= "<input type=\"hidden\" name=\"{$_field}[]\" value=\"".htmlspecialchars($_val)."\">";
+                    $strCell .= "<input{$classAttr} type=\"text\" name=\"{$_field}_text[]\" value=\"".htmlspecialchars($this->getSelectValue($cell, $row))."\">";
+                    if ($ixRow===null){ //paint floating select
+                        $strCell .= "<select id=\"select_{$_field}\" class=\"eg_floating_select\">\r\n";
+                        $strCell .= ($cell['defaultText']!="" ? "\t<option value=\"\">{$cell['defaultText']}\r\n" : "");
+                        
+                        foreach($cell['arrValues'] as $key => $_value){
+
+                            if (is_array($_value)){ // if there's an optgoup
+                                $retVal .= '<optgroup label="'.(isset($cell['optgroups']) ? $cell['optgroups'][$key] : $key).'">';
+                                foreach($_value as $optVal=>$optText){
+                                    $retVal .= "<option value='$optVal'".((string)$optVal==(string)$strValue ? " SELECTED " : "").">".str_repeat('&nbsp;',5*$cell["indent"][$key]).htmlspecialchars($optText)."</option>\r\n";
+                                }
+                                $retVal .= '</optgroup>';
+                            } else
+                                $strCell .= "\t<option value=\"".htmlspecialchars($key)."\">".htmlspecialchars($_value)."\r\n";
+                        }
+                        $strCell .= "</select>\r\n";
                     }
-                    $strCell .= "</select>\r\n";
-                }
-                break;
-            case "ajax_dropdown":
-                $strCell .= "<input type=\"hidden\" name=\"{$field}[]\" value=\"".htmlspecialchars($val)."\">";
-                $strCell .= "<input type=\"text\" name=\"{$field}_text[]\"".
-                    " src=\"{table:'{$col['source']}', prefix:''}\" autocomplete=\"off\"".
-                    " value=\"".$this->getSelectValue($cell, $row)."\">";
-            case "del":
-                break;
-            default: 
-                $strCell .= "<input type=\"text\" name=\"{$field}[]\" value=\"".htmlspecialchars($val)."\">";
-                break;
+                    break;
+                case "ajax_dropdown":
+                    $strCell .= "<input type=\"hidden\" name=\"{$_field}[]\" value=\"".htmlspecialchars($_val)."\">";
+                    $strCell .= "<input{$classAttr} type=\"text\" name=\"{$_field}_text[]\"".
+                        " src=\"{table:'{$col['source']}', prefix:'{$col['prefix']}'}\" autocomplete=\"off\"".
+                        " value=\"".$this->getSelectValue($cell, $row)."\">";
+                case "del":
+                    break;
+                default: 
+                    $strCell .= "<input{$classAttr} type=\"text\" name=\"{$_field}[]\" value=\"".htmlspecialchars($_val)."\">";
+                    break;
+            }
+        
         }
-    
+            
     }
+    
     
     $strCell .= "</td>\r\n";
     return $strCell;
@@ -495,10 +547,14 @@ function datePHP2SQL($dtVar, $valueIfEmpty="NULL"){
 }
 
 
-function Update($flagExecute = true){
+function Update($arrNewData = array(), $flagExecute = true){
 	
     GLOBAL $usrID;
-    
+
+    if (count($arrNewData)==0){
+        $arrNewData = $_POST;        
+    }
+
     $sql = Array();
     
     $oSQL=$this->oSQL;
@@ -531,7 +587,10 @@ function Update($flagExecute = true){
             $mndFieldName = $col["field"];
         
         foreach($arrTable["columns"] as $j=>$tCol) 
-            if (!$col['disabled'] && ($col['type']!="row_id")  && $col['field'] == $arrTable["columns"][$j]["Field"]){
+            if ((!$col['disabled'] || ($col['disabled'] && in_array($col['field'], $arrTable['PK'])))
+                && $col['type']!="row_id"
+                && $col['field'] == $arrTable["columns"][$j]["Field"]
+                ){
                 $arrFields[] = $col['field'];
                 $arrTable["columns"][$j]['DataType'] = ($col['type']=="combobox" || $col['type']=="ajax_dropdown" 
                     ? "combobox" 
@@ -558,7 +617,7 @@ function Update($flagExecute = true){
     }
     
     //deleted items
-    $strDeleted = $_POST["inp_".$this->name."_deleted"];
+    $strDeleted = $arrNewData["inp_".$this->name."_deleted"];
     //echo $strDeleted;
     $arrToDelete = explode("|", $strDeleted);
     
@@ -568,9 +627,9 @@ function Update($flagExecute = true){
         }
     
     // running thru updated
-    for($i=1;$i<count($_POST[$pkColName]);$i++)
-        if ($_POST["inp_".$this->name."_updated"][$i] && $_POST[$mndFieldName][$i]!=""){
-            if ($_POST[$pkColName][$i]=="") { //if inserted
+    for($i=1;$i<count($arrNewData[$pkColName]);$i++)
+        if ($arrNewData["inp_".$this->name."_updated"][$i] && $arrNewData[$mndFieldName][$i]!=""){
+            if ($arrNewData[$pkColName][$i]=="") { //if inserted
                 eval("\$sql[] = \"INSERT INTO $tblName (\r\n".
                      "              ".implode("\r\n              , ", $arrFields)."\r\n".
                      "           ) VALUES (\r\n".
@@ -579,13 +638,13 @@ function Update($flagExecute = true){
             } else { //if updated
                 eval("\$sql[] = \"UPDATE $tblName SET
                   ".implode("\r\n                  , ", $arrFieldsValues)."\r\n".
-                  "           WHERE ".$this->getMultiPKCondition($arrTable['PK'], $_POST[$pkColName][$i])."\";");
+                  "           WHERE ".$this->getMultiPKCondition($arrTable['PK'], $arrNewData[$pkColName][$i])."\";");
             }
         }
 
      /*
     echo "<pre>";
-    print_r($_POST);
+    print_r($arrNewData);
     print_r($sql);
     print_r($arrTable);
     echo "</pre>";
@@ -750,7 +809,7 @@ function Update_Intra($flagExecute = true){
             }
         }
 
-     /*
+     //*
     echo "<pre>";
     print_r($_POST);
     print_r($sql);

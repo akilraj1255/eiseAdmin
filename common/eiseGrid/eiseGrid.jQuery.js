@@ -1,15 +1,28 @@
 /********************************************************/
 /*  
-eiseGrid JavaSctipt
+eiseGrid jQuery wrapper
 
-requires: 
+requires jQuery UI 1.8: 
 http://ajax.googleapis.com/ajax/libs/jqueryui/1.8/jquery-ui.min.js
+
+
+Published under GPL version 2 license
+(c)2006-2013 Ilya S. Eliseev ie@e-ise.com, easyise@gmail.com
+
+Contributors:
+Pencho Belneiski
+Dmitry Zakharov
+Igor Zhuravlev
+
+eiseGrid feference:
+http://e-ise.com/eiseGrid/
 
 */
 /********************************************************/
-
-var grids = [];
-
+(function( $ ) {
+var settings = {
+    
+};
 
 function eiseGrid(gridDIV){
     this.id = gridDIV.attr('id');
@@ -58,7 +71,7 @@ function eiseGrid(gridDIV){
         })
     }) 
     
-    this.tbody.find('.eg_checkbox input').bind('change', function(){
+    this.tbody.find('.eg_checkbox input, .eg_boolean input').bind('change', function(){
         if(this.checked)
             $(this).prev('input').val('1');
         else 
@@ -104,6 +117,58 @@ function eiseGrid(gridDIV){
         oSelect.focus();
                 
     });
+
+    // control bar buttons
+    this.div.find('.eg_button_add').bind('click', function(){
+        oThis.addRow(null);
+    });
+    this.div.find('.eg_button_insert').bind('click', function(){
+        oThis.insertRow();
+    });
+    this.div.find('.eg_button_moveup').bind('click', function(){
+        oThis.moveUp();
+    });
+    this.div.find('.eg_button_movedown').bind('click', function(){
+        oThis.moveDown();
+    });
+    this.div.find('.eg_button_delete').bind('click', function(){
+        if (oThis.activeRow!=null)
+            oThis.deleteRow(oThis.activeRow);
+    });
+    this.div.find('.eg_button_save').bind('click', function(){
+        oThis.save();
+    });
+
+    //tabs 3d
+    this.div.find('#'+this.id+'_tabs3d').each(function(){
+        var selectedTab = document.cookie.replace(new RegExp("(?:(?:^|.*;\\s*)"+oThis.conf.Tabs3DCookieName+"\\s*\\=\\s*([^;]*).*$)|^.*$"), "$1");
+        var selectedTabIx = 0;
+
+        $(this).find('a').each(function(ix, obj){
+            var tabID = $(obj).attr('href').replace('#'+oThis.id+'_tabs3d_', '');
+            if (ix==0 && selectedTab==''){
+                selectedTab = tabID;
+                return false; //break
+            }
+            if (tabID==selectedTab){
+                selectedTabIx = ix;
+                return false; //break
+            }
+        })
+        
+        $(this).tabs({
+            selected: selectedTabIx
+            , select: function(event, ui){
+                var ID = ui.panel.id.replace(oThis.id+'_tabs3d_', '');
+                oThis.sliceByTab3d(ID);
+            }
+        });
+
+        oThis.sliceByTab3d(selectedTab);
+        
+
+    });
+    
     
 }
 
@@ -499,10 +564,10 @@ eiseGrid.prototype.verifyInput = function (oTr, strFieldName) {
             case "real":
             case "float":
             case "double":
-                strValue = parseFloat(strValue
+                var nValue = parseFloat(strValue
                     .replace(new RegExp("\\"+this.conf.decimalSeparator, "g"), '.')
                     .replace(new RegExp("\\"+this.conf.thousandsSeparator, "g"), ''));
-                if (strValue!="" && isNaN(strValue)){
+                if (strValue!="" && isNaN(nValue)){
                     alert(this.conf.columns[strFieldName].title+" should be numeric");
                     this.focus(oTr, strFieldName);
                     return false;
@@ -596,50 +661,262 @@ eiseGrid.prototype.save = function(){
     oForm.submit();
 }
 
-function eiseGridInitialize(){
-    
-    $(".eiseGrid").each(function(){
-        var gridID = $(this).attr('id');
-        var oGrid = new eiseGrid($(this));
-        grids[gridID] = oGrid;
-    })
-    
-    $('.eg_button_add').bind('click', function(){
-        grids[$(this).parents('.eiseGrid').attr('id')].addRow(null);
-    });
-    $('.eg_button_insert').bind('click', function(){
-        grids[$(this).parents('.eiseGrid').attr('id')].insertRow();
-    });
-    $('.eg_button_moveup').bind('click', function(){
-        grids[$(this).parents('.eiseGrid').attr('id')].moveUp();
-    });
-    $('.eg_button_movedown').bind('click', function(){
-        grids[$(this).parents('.eiseGrid').attr('id')].moveDown();
-    });
-    $('.eg_button_save').bind('click', function(){
-        grids[$(this).parents('.eiseGrid').attr('id')].save();
-    });
 
-}
-
-function eiseGrid_find(gridName){
-    return grids[gridName];
+eiseGrid.prototype.sliceByTab3d = function(ID){
+    document.cookie = this.conf.Tabs3DCookieName+'='+ID;
+    //eg_3d eg_3d_20DC
+    this.tbody.find('td .eg_3d').css('display', 'none');
+    this.tbody.find('td .eg_3d_'+ID).css('display', 'block');
 }
 
 
-// backward-compatibility functions with easyGrid
-function easyGridInitialize(){ // backward-compatibility function
-    
-    eiseGridInitialize();
-    
+
+var methods = {
+init: function( conf ) {
+
+    this.each(function() {
+        var data, dataId, conf_,
+                $this = $(this);
+
+        $this.eiseGrid('conf', conf);
+        data = $this.data('eiseGrid') || {};
+        conf_ = data.conf;
+
+        // If the plugin hasn't been initialized yet
+        if ( !data.eiseGrid ) {
+            dataId = +new Date;
+
+            data = {
+                eiseGrid_data: true
+                , conf: conf_
+                , id: dataId
+                , eiseGrid : new eiseGrid($this)
+            };
+
+            
+            // create element and append to body
+            var $eiseGrid_data = $('<div />', {
+                'class': 'eiseGrid_data'
+            }).appendTo( 'body' );
+
+            // Associate created element with invoking element
+            $eiseGrid_data.data( 'eiseGrid', {target: $this, id: dataId} );
+            // And vice versa
+            data.eiseGrid_data = $eiseGrid_data;
+
+            $this.data('eiseGrid', data);
+        } // !data.eiseGrid
+
+        
+
+    });
+
+    return this;
+},
+destroy: function( ) {
+
+    this.each(function() {
+
+        var $this = $(this),
+                data = $this.data( 'eiseGrid' );
+
+        // Remove created elements, unbind namespaced events, and remove data
+        $(document).unbind( '.eiseGrid_data' );
+        data.eiseGrid.remove();
+        $this.unbind( '.eiseGrid_data' )
+        .removeData( 'eiseGrid_data' );
+
+    });
+
+    return this;
+},
+conf: function( conf ) {
+
+    this.each(function() {
+        var $this = $(this),
+            data = $this.data( 'eiseGrid' ) || {},
+            conf_ = data.conf || {};
+
+        // deep extend (merge) default settings, per-call conf, and conf set with:
+        // html10 data-eiseGrid conf JSON and $('selector').eiseGrid( 'conf', {} );
+        conf_ = $.extend( true, {}, $.fn.eiseGrid.defaults, conf_, conf || {} );
+        data.conf = conf_;
+        $.data( this, 'eiseGrid', data );
+    });
+
+    return this;
+},
+addRow: function ($trAfter){
+    //Adds a row after specified trAfter row. If not set, adds a row to the end of the grid.
+    this.each(function(){
+        var grid = $(this).data('eiseGrid').eiseGrid;
+        grid.addRow($trAfter);
+
+    });
+    return this;
+
+}, 
+selectRow: function ($tr){
+    //Selects a row specified by tr parameter.
+    this.each(function(){
+        var grid = $(this).data('eiseGrid').eiseGrid;
+        grid.selectRow($tr);
+
+    });
+    return this;
+},
+
+deleteRow: function ($tr){
+    //Removes a row specified by tr parameter. If not set, removes selected row
+    this.each(function(){
+        var grid = $(this).data('eiseGrid').eiseGrid;
+        grid.deleteRow($tr);
+
+    });
+    return this;
+},
+
+updateRow: function ($tr){
+    //It marks specified row as updated
+    this.each(function(){
+        var grid = $(this).data('eiseGrid').eiseGrid;
+        grid.updateRow($tr);
+
+    });
+    return this;
+
+}, 
+recalcOrder: function(){
+    //recalculates row order since last changed row
+    this.each(function(){
+        var grid = $(this).data('eiseGrid').eiseGrid;
+        grid.recalcOrder();
+
+    });
+    return this;
+},
+
+moveUp: function(){
+    //Moves selected row up by 1 step, if possible
+    this.each(function(){
+        var grid = $(this).data('eiseGrid').eiseGrid;
+        grid.moveUp();
+
+    });
+    return this;
+},
+
+moveDown: function(){
+    //Moves selected row down by 1 step, if possible
+    this.each(function(){
+        var grid = $(this).data('eiseGrid').eiseGrid;
+        grid.moveDown();
+
+    });
+    return this;
+},
+
+sliceByTab3d: function(ID){ 
+    //brings data that correspond to tab ID to the front
+    this.each(function(){
+        var grid = $(this).data('eiseGrid').eiseGrid;
+        grid.sliceByTab3d(ID);
+    });
+    return this;
+},
+
+recalcTotals: function (strField){
+    //Recalculates totals for given field.
+    this.each(function(){
+        var grid = $(this).data('eiseGrid').eiseGrid;
+        grid.recalcTotals(strFields);
+
+    });
+    return this;
+},
+
+change:  function(strFields, callback){
+    //Assigns “change” event callback for fields enlisted in strFields parameter.
+    this.each(function(){
+
+        var grid = $(this).data('eiseGrid').eiseGrid;
+
+        grid.change(strFields, callback);
+
+    });
+    return this;
+},
+
+value: function ($tr, strField, value, text){
+    //Sets or gets value for field strField in specified row, if there’s a complex field 
+    //(combobox, ajax_dropdown), it can also set text representation of data.
+    var grid = $(this[0]).data('eiseGrid').eiseGrid;
+    return grid.value($tr, strField, value, text);
+},
+
+text: function($tr, strField, text) {
+    //Returns text representation of data for field strField in specified row tr.
+    var grid = $(this[0]).data('eiseGrid').eiseGrid;
+    return grid.text($tr, strField, text);
+},
+
+focus: function($tr, strField){
+    //Sets focus to field strField in specified row tr.
+    var grid = $(this[0]).data('eiseGrid').eiseGrid;
+    grid.focus($tr, strField);
+    return this;
+},
+
+validateInput: function ($tr, strField){
+    //Validates data for field strField in row tr. Returns true if valid.
+    this.each(function(){
+
+        var grid = $(this).data('eiseGrid').eiseGrid;
+
+        grid.verifyInput($tr, strField);
+
+    });
+    return this;
+},
+
+validate: function(){
+    //Validates entire contents of eiseGrids matching selectors. Returns true if all data in all grids is valid
+    var flagOK = true;
+    this.each(function(){
+
+        var grid = $(this).data('eiseGrid').eiseGrid;
+
+        flagOK = flagOK && grid.verify();
+
+    });
+    return flagOK;
+},
+
+save: function(){
+    //Wraps whole grid with FORM tag and submits it to script specified in settings.
+    var grid = $(this[0]).data('eiseGrid').eiseGrid;
+    grid.save();
+    return this;
 }
 
-function easyGridAddRow(gridName){
-    
-    return grids[gridName].addRow(null);
-    
-}
+};
 
-function easyGridVerify(gridName){
-    return grids[gridName].verify();
-}
+var protoSlice = Array.prototype.slice;
+
+$.fn.eiseGrid = function( method ) {
+
+    if ( methods[method] ) {
+        return methods[method].apply( this, protoSlice.call( arguments, 1 ) );
+    } else if ( typeof method === 'object' || ! method ) {
+        return methods.init.apply( this, arguments );
+    } else {
+        $.error( 'Method ' +  method + ' does not exist on jQuery.fn.eiseGrid' );
+    }
+
+};
+
+$.extend($.fn.eiseGrid, {
+    defaults: settings
+});
+
+})( jQuery );

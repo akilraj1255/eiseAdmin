@@ -154,116 +154,11 @@ switch ($_GET["toGen"]){
         
         break;
     case "easyGrid":
-        $strCode .= "<?php\r\n";
-        $strCode .= "include 'common/auth.php';\r\n\r\n";
         
-        $strCode .= "\$DataAction  = (isset(\$_POST['DataAction']) ? \$_POST['DataAction'] : \$_GET['DataAction'] );\r\n\r\n";
-        
-        $strCode .= 'include "../common/eiseGrid/inc_eiseGrid.php";'."\r\n";
-        $strCode .= '$arrJS[] = "../common/eiseGrid/eiseGrid.js";'."\r\n";
-        $strCode .= '$arrCSS[] = "../common/eiseGrid/eiseGrid.css";'."\r\n\r\n";
-        
-        $strCode .= "\$grid".strtoupper($arrTable['prefix'])." = new eiseGrid(\$oSQL
-        ,'".$arrTable['prefix']."'
-        , Array('arrPermissions' => Array('FlagWrite'=>\$intra->arrUsrData['FlagWrite'])
-                , 'strTable' => '".$tblName."'
-                , 'strPrefix' => '".$arrTable['prefix']."'
-                , 'controlBarButtons' => 'add|moveup|movedown|save'
-                )
-        );\r\n\r\n";
-        
-        $strCode .= "\$grid".strtoupper($arrTable['prefix'])."->Columns[]  = Array(
-            'type' => 'row_id'
-            , 'field' => '".($arrTable['PKtype']=="user_defined" ? $arrTable['PK'][0]."_id" : $arrTable['PK'][0])."'
-        );\r\n";
-        
-        foreach($arrTable['columns'] as $col){
-            if ($col["DataType"]=="binary")
-               continue;
-            if ($col["Extra"]=="auto_increment")
-               continue;
-            if ($col["DataType"]=="activity_stamp" && $col["Field"]!=$arrTable['prefix']."EditDate")
-               continue;
-               
-           $strCode .= "\$grid".strtoupper($arrTable['prefix'])."->Columns[] = Array(\r\n";    
-           
-           
-           $strCode .= "        'title' => \$intra->translate(\"".($col["Comment"]!="" ? $col["Comment"] : $col["Field"])."\")\r\n";
-           $strCode .= "        , 'field' => \"".$col["Field"]."\"\r\n";
-           $strCode .= "        , 'type' => \"";
-           switch($col["DataType"]){
-               case "text":
-               case "FK":
-               case "PK":
-               default:
-                  $strCode .= "text";
-                  break;
-               case "integer":
-               case "real":
-                  $strCode .= "numeric";
-                  break;
-               case "boolean":
-                    $strCode .= "checkbox";
-                    break;
-               case "date":
-               case "datetime":
-                  $strCode .= $col["DataType"];
-                  break;
-               case "activity_type":
-                    $strCode .= "datetime";
-                    break;
-           }
-           $strCode .= "\"\r\n";
-           $strCode .= ($col["Field"]==$arrTable['prefix']."EditDate" || $col["DataType"]=="PK"
-                                                                        ? "        , 'disabled' => true\r\n" : "");
-           $strCode .= ($col["Field"]==$arrTable['prefix']."TitleLocal" ? "        , 'width'=>'50%', 'mandatory' => true\r\n" : "");
-           $strCode .= ($col["Field"]==$arrTable['prefix']."Title"      ? "        , 'width'=>'50%', 'mandatory' => true\r\n" : "");
-           $strCode .= ");\r\n";
-           
-        }
-        
-        $strCode .= "\r\nswitch(\$DataAction){
-    case \"update\":
-        \$grid".strtoupper($arrTable['prefix'])."->Update();
-        SetCookie(\"UserMessage\", \"Data is updated\");
-        header(\"Location: \".\$_SERVER[\"PHP_SELF\"]);
+        include commonStuffAbsolutePath.'eiseGrid/inc_eiseGrid_codegen.php';
+        $strCode = eiseGrid_codegen::code(array('tableName'=>$tblName, 'arrTable'=>$arrTable));
         break;
-    default:
-        break;
-}
-include('../common/inc-frame_top.php');
-?>
-<script>
-\$(document).ready(function(){  
-	eiseGridInitialize();
-});
-</script>
-<h1><?php echo \$intra->arrUsrData[\"pagTitle{\$intra->local}\"]; ?></h1>
 
-<div class=\"panel\">
-<?php
-\$sql".strtoupper($arrTable['prefix'])." = \"SELECT * FROM ".$tblName."\";
-\$rs".strtoupper($arrTable['prefix'])." = \$oSQL->do_query(\$sql".strtoupper($arrTable['prefix']).");
-while (\$rw".strtoupper($arrTable['prefix'])." = \$oSQL->fetch_array(\$rs".strtoupper($arrTable['prefix']).")){
-    //".($arrTable['PKtype']=="user_defined" 
-       ? "\$rw".strtoupper($arrTable['prefix'])."['".$arrTable['PK'][0]."_id'] = \$rw".strtoupper($arrTable['prefix'])."['".$arrTable['PK'][0]."'];" 
-       : $arrTable['PK'][0])."
-    \$grid".strtoupper($arrTable['prefix'])."->Rows[] = \$rw".strtoupper($arrTable['prefix']).";
-}
-
-\$grid".strtoupper($arrTable['prefix'])."->Execute();
-
-include('../common/inc-frame_bottom.php');
-?>
-";
-        /*
-        echo "<pre>";
-        print_r($arrTable);
-        echo "</pre>";
-//        */
-        
-        
-        break;      
     case "phpList":
         
         /*
@@ -592,10 +487,7 @@ include('../common/inc-frame_bottom.php');
         
         \$oSQL->q('COMMIT');
         
-        
-        SetCookie(\"UserMessage\", \"Data is updated\");
-        header(\"Location: \".\$_SERVER[\"PHP_SELF\"].\"?{$pkURI}\");
-        die();
+        \$intra->redirect(\$intra->translate(\"Data is updated\"), \$_SERVER[\"PHP_SELF\"].\"?{$pkURI}\");
         
     case 'delete':
     
@@ -603,8 +495,8 @@ include('../common/inc-frame_bottom.php');
         \$sqlDel = \"DELETE FROM `{$tblName}` WHERE ".$arrTable["PKCond"]."\";
         \$oSQL->q(\$sqlDel);
         \$oSQL->q('COMMIT');
-        SetCookie(\"UserMessage\", \"Data is deleted\");
-        header(\"Location: \".preg_replace('/form\.php$/', 'list.php', \$_SERVER[\"PHP_SELF\"]));
+
+        \$intra->redirect(\$intra->translate(\"Data is updated\"), preg_replace('/form\.php$/', 'list.php', \$_SERVER[\"PHP_SELF\"]));
         die();
         
     default:

@@ -16,7 +16,7 @@ if ($_POST["DataAction"]=="update"){
 
 <script type="text/javascript" src="/common/jquery/jquery-1.6.1.min.js"></script>
 <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jqueryui/1.8/jquery-ui.min.js"></script>
-<script type="text/javascript" src="eiseGrid.js"></script>
+<script type="text/javascript" src="eiseGrid.jQuery.js"></script>
 <link rel="STYLESHEET" type="text/css" href="eiseGrid.css" media="screen">
 <link rel="STYLESHEET" type="text/css" href="http://ajax.googleapis.com/ajax/libs/jqueryui/1.8/themes/ui-lightness/jquery-ui.css" media="screen">
 <style>
@@ -31,7 +31,7 @@ html, body {
 
 <script>
 $(document).ready(function(){
-    easyGridInitialize(); 
+    $('.eiseGrid').eiseGrid();
 });
 </script>
 

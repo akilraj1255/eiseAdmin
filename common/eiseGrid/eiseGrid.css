@@ -104,6 +104,7 @@ td.eg_date div, td.eg_datetime div {
 }
 
 td.eg_numeric
+, td.eg_real
 , td.eg_money
 , td.eg_double
 , td.eg_float
@@ -115,6 +116,7 @@ td.eg_numeric
 }
 
 td.eg_numeric input
+, td.eg_real input
 , td.eg_money input
 , td.eg_double input
 , td.eg_float input
@@ -172,4 +174,15 @@ select.eg_floating_select {
 .eg_controlbar {
     margin-bottom: -25px;
     margin-left: 3px;
+}
+
+.eg_pseudotabs {
+    line-height: 0 !important;
+    height: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+}
+
+.eg_3d {
+    display: none;
 }

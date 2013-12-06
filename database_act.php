@@ -234,9 +234,10 @@ COMMENT='Version information for the system';
    $sqlTable['INSERT INTO stbl_version'] = "INSERT INTO stbl_version (
     verNumber
     , `verDesc`
+    , `verFlagVersioned`
     , `verDate`
 ) VALUES (
-    1, 'Version 001'
+    1, 'Version 001', 1
     ,  NOW());";
 
    $sqlTable['CREATE TABLE stbl_framework_version'] = "
