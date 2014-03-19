@@ -153,6 +153,7 @@ function Execute(){
         return;
     }
 
+
     chdir($this->strDir);
     $newVer = $verNumber+1;
     foreach($arrFiles as $ver => $file){

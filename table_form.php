@@ -162,20 +162,16 @@ $arrActions[]= Array ("title" => "Back to DB"
 	   , "class"=> "ss_arrow_left"
 	);
     
-$arrActions[]= Array ("title" => "INSERT"
-	   , "action" => "codegen_form.php?dbName=$dbName&tblName=$tblName&toGen=INSERT"
+$arrActions[]= Array ("title" => "INSERT...SELECT"
+	   , "action" => "codegen_form.php?dbName=$dbName&tblName=$tblName&toGen=INSERT%20SELECT"
 	   , "class"=> "ss_script"
 	);
-$arrActions[]= Array ("title" => "INSERT PHP"
-	   , "action" => "codegen_form.php?dbName=$dbName&tblName=$tblName&toGen=INSERT%20PHP"
+$arrActions[]= Array ("title" => "INSERT SIMPLE"
+	   , "action" => "codegen_form.php?dbName=$dbName&tblName=$tblName&toGen=INSERT"
 	   , "class"=> "ss_script"
 	);
 $arrActions[]= Array ("title" => "UPDATE"
 	   , "action" => "codegen_form.php?dbName=$dbName&tblName=$tblName&toGen=UPDATE"
-	   , "class"=> "ss_script"
-	);
-$arrActions[]= Array ("title" => "UPDATE PHP"
-	   , "action" => "codegen_form.php?dbName=$dbName&tblName=$tblName&toGen=UPDATE%20PHP"
 	   , "class"=> "ss_script"
 	);
 $arrActions[]= Array ("title" => "eiseGrid"

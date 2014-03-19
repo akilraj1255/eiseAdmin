@@ -9,6 +9,15 @@ eiseIntra core class
 include "inc_config.php";
 include "inc_mysqli.php";
 
+$arrJS[] = eiseIntraRelativePath."intra.js";
+$arrJS[] = eiseIntraRelativePath."intra_execute.js";
+
+$arrCSS[] = imagesRelativePath."sprites/sprite.css";
+$arrCSS[] = eiseIntraRelativePath."intra.css";
+$arrCSS[] = commonStuffRelativePath."screen.css";
+
+
+
 class eiseIntra {
 
 public $arrDataTypes = array("integer", "real", "boolean", "text", "binary", "date", "time", "datetime","FK","PK");
@@ -255,8 +264,10 @@ function redirect($strMessage, $strLocation, $arrConfig = array()){
 
 function backref($urlIfNoReferer){
     
-    if (strpos($_SERVER["HTTP_REFERER"], $_SERVER["REQUEST_URI"])===false){//if referer is not from itself
-        // record a cookie
+    if (strpos($_SERVER["HTTP_REFERER"], $_SERVER["REQUEST_URI"])===false //if referer is not from itself
+        &&
+        strpos($_SERVER["HTTP_REFERER"], 'index.php?pane=')===false ) //and not from fullEdit
+    {
         SetCookie("referer", $_SERVER["HTTP_REFERER"], 0, $_SERVER["PHP_SELF"]);
         $backref = $_SERVER["HTTP_REFERER"];
     } else {
@@ -447,6 +458,7 @@ function showTextBox($strName, $strValue, $arrConfig=Array()) {
             ($strAttrib ? " ".$strAttrib : "").
             ($strClass ? " ".$strClass : "").
             ($arrConfig["required"] ? " required=\"required\"" : "").
+            ($arrConfig["maxlength"] ? " maxlength=\"{$arrConfig["maxlength"]}\"" : "").
        " value=\"".htmlspecialchars($strValue)."\" />\r\n";
     } else {
         $strRet = "<div id=\"span_{$strName}\"".
@@ -833,14 +845,15 @@ function getSQLValue($col, $flagForArray=false){
     
     switch($col["DataType"]){
       case "integer":
-        $strValue = "'\".(integer)$strPost.\"'";
+        $strValue = "'\".(integer)\$intra->decPHP2SQL($strPost).\"'";
         break;
       case "nOrder":
         $strValue = "'\".($strPost=='' ? \$i : $strPost).\"'";
         break;
       case "real":
       case "numeric":
-        $strValue = "'\".(double)str_replace(',', '', $strPost).\"'";
+      case "number":
+        $strValue = "'\".(double)\$intra->decPHP2SQL($strPost).\"'";
         break;
       case "boolean":
         if (!$flagForArray)
@@ -850,10 +863,10 @@ function getSQLValue($col, $flagForArray=false){
         break;
       case "text":
       case "varchar":
-        $strValue = "\".\$oSQL->escape_string($strPost).\"";
+        $strValue = "\".\$oSQL->e($strPost).\"";
         break;
       case "binary":
-        $strValue = "\".mysql_real_escape_string(\$".$col["Field"].").\"";
+        $strValue = "\".\$oSQL->e(\$".$col["Field"].").\"";
         break;
       case "datetime":
         $strValue = "\".\$intra->datetimePHP2SQL($strPost).\"";
@@ -870,7 +883,7 @@ function getSQLValue($col, $flagForArray=false){
       case "FK":
       case "combobox":
       case "ajax_dropdown":
-       $strValue = "\".($strPost!=\"\" ? \"'\".$strPost.\"'\" : \"NULL\").\"";
+        $strValue = "\".($strPost!=\"\" ? \$oSQL->e($strPost) : \"NULL\").\"";
         break;
       case "PK":
       default:
@@ -934,8 +947,110 @@ function getDataFromCommonViews($strValue, $strText, $strTable, $strPrefix, $fla
     return $rs;
 }
 
-function dateSQL2PHP($dtVar){
-$result =  $dtVar ? date($this->conf["dateFormat"], strtotime($dtVar)) : "";
+function result2JSON($rs, $arrConf = array()){
+    $arrConf_default = array(
+        'flagAllowDeny' => 'allow'
+        , 'arrPermittedFields' => array() // if 'allow', it contains only closed fields and vice-versa
+        , 'arrHref' => array()
+        , 'fields' => array()
+        , 'flagEncode' => false
+        );
+    $arrConf = array_merge($arrConf_default, $arrConf);
+    $arrRet = array();
+    $oSQL = $this->oSQL;
+    $arrFields = $oSQL->ff($rs);
+
+    while ($rw = $oSQL->f($rs)){
+        $arrRW = array();
+        if(isset($arrConf['fieldPermittedFields']) && isset($rw[$arrConf['fieldPermittedFields']])){
+            $arrPermittedFields = explode(',', $rw[$arrConf['fieldPermittedFields']]);
+        } else {
+            $arrPermittedFields = is_array($arrConf['arrPermittedFields']) ? $arrConf['arrPermittedFields'] : array();
+        }
+
+        foreach($rw as $key=>$value){
+
+            switch($arrFields[$key]['type']){
+                case 'real':
+                    $decPlaces = (isset($arrConf['fields'][$key]['decimalPlaces'])
+                        ? $arrConf['fields'][$key]['decimalPlaces']
+                        : ($arrFields[$key]['decimalPlaces']<6
+                            ? $arrFields[$key]['decimalPlaces']
+                            : $this->conf['decimalPlaces'])
+                        );
+                    $arrRW[$key]['v'] = $this->decSQL2PHP($value, $decPlaces);
+                    break;
+                case 'integer':
+                case 'boolean':
+                    $arrRW[$key]['v'] = (int)$value;
+                    break;
+                case 'date':
+                    $arrRW[$key]['v'] = $this->dateSQL2PHP($value);
+                    break;
+                case 'datetime':
+                    $arrRW[$key]['v'] = $this->datetimeSQL2PHP($value);
+                    break;
+                case 'timestamp':
+                    $arrRW[$key]['v'] = $this->datetimeSQL2PHP(date('Y-m-d H:i:s', $value));
+                    break;
+                case 'time':
+                default:
+                    $arrRW[$key]['v'] = (string)$value;
+                    break;
+            }
+
+
+            if (isset($rw[$key.'_text'])){
+                $arrRW[$key]['t'] = $rw[$key.'_text'];
+            }
+
+            if (($arrConf['flagAllowDeny']=='allow' && in_array($key, $arrPermittedFields))
+                || ($arrConf['flagAllowDeny']=='deny' && !in_array($key, $arrPermittedFields))
+                || $arrConf['fields'][$key]['disabled'] || $arrConf['fields'][$key]['static']){
+
+                $arrRW[$key]['rw'] = 'r';
+
+            }
+
+            if (isset($arrConf['arrHref'][$key]) || $arrConf['fields'][$key]['href']){
+                $href = ($arrConf['arrHref'][$key] ? $arrConf['arrHref'][$key] : $arrConf['fields'][$key]['href']);
+                foreach ($rw as $kkey => $vvalue)
+                    $href = str_replace("[".$kkey."]", urlencode($vvalue), $href);
+                $arrRW[$key]['h'] = $href;
+                $arrRW[$key]['rw'] = 'r';
+            }
+        }
+        $arrRet[] = $arrRW;
+    }
+    return ($arrConf['flagEncode'] ? json_encode($arrRet) : $arrRet);
+
+}
+
+function unq($sqlReadyValue){
+    return (strtoupper($sqlReadyValue)=='NULL' ? null : (string)preg_replace("/^(')(.*)(')$/", '\2', $sqlReadyValue));
+}
+
+function decPHP2SQL($val){
+    return ($val!=='' 
+        ? (double)str_replace($this->conf['decimalSeparator'], '.', str_replace($this->conf['thousandsSeparator'], '', $val))
+        : 'NULL'
+        );
+}
+
+function decSQL2PHP($val, $decimalPlaces=null){
+    $decPlaces = ((is_int($var) && $decimalPlaces===null) 
+        ? 0 
+        : ($decimalPlaces!==null 
+            ? $decimalPlaces
+            : $intra->conf['decimalPlaces'])
+        );
+    return (!is_null($val) 
+            ? number_format((double)$val, $decimalPlaces, $intra->conf['decimalSeparator'], $intra->conf['thousandsSeparator'])
+            : '');
+}
+
+function dateSQL2PHP($dtVar, $precision='date'){
+$result =  $dtVar ? date($this->conf["dateFormat"].($precision!='date' ? " ".$this->conf["timeFormat"] : ''), strtotime($dtVar)) : "";
 return $result ;
 }
 
@@ -960,14 +1075,15 @@ function datetimePHP2SQL($dtVar, $valueIfEmpty="NULL"){
     $prg = "/^".$this->conf["prgDate"]."( ".$this->conf["prgTime"]."){0,1}$/";
     $result =  (
         preg_match($prg, $dtVar) 
-        ? "'".preg_replace("/".$this->conf["prgDate"]."/", $this->conf["prgDateReplaceTo"], $dtVar)."'" 
+        ? preg_replace("/".$this->conf["prgDate"]."/", $this->conf["prgDateReplaceTo"], $dtVar) 
         : (
             preg_match('/^[12][0-9]{3}\-[0-9]{2}-[0-9]{2}( [0-9]{1,2}\:[0-9]{2}(\:[0-9]{2}){0,1}){0,1}$/', $dtVar)
-            ? "'".$dtVar."'"
-            : $valueIfEmpty 
+            ? $dtVar
+            : null 
         )
         );
-    return $result;
+
+    return ($result!==null ? "'".date('Y-m-d H:i:s', strtotime($result))."'" : $valueIfEmpty);
 }
 
 function getDateTimeByOperationTime($operationDate, $time){
@@ -975,9 +1091,9 @@ function getDateTimeByOperationTime($operationDate, $time){
     $stpOperationDayStart = isset($this->conf['stpOperationDayStart']) ? $this->conf['stpOperationDayStart'] : '00:00'; 
     $stpOperationDayEnd = isset($this->conf['stpOperationDayEnd']) ? $this->conf['stpOperationDayEnd'] : '23:59:59'; 
     $tempDate = Date('Y-m-d');
-    if (strtotime($tempDate.' '.$stpOperationDayEnd) < strtotime($tempDate.' '.$stpOperationDayStart)
+    if (strtotime($tempDate.' '.$stpOperationDayEnd) <= strtotime($tempDate.' '.$stpOperationDayStart)
     // e.g. 1:30 < 7:30, this means that operation date prolongs to next day till $stpOperationDayEnd
-        && strtotime($tempDate.' '.$time) < strtotime($tempDate.' '.$stpOperationDayEnd)
+        && strtotime($tempDate.' '.$time) <= strtotime($tempDate.' '.$stpOperationDayEnd)
          // and current time less than $stpOperationDayEnd
         ){
             return (Date('Y-m-d',strtotime($operationDate)+60*60*24).' '.$time);

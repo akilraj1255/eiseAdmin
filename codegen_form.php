@@ -6,55 +6,87 @@ $oSQL->select_db($oSQL->dbname);
 $dbName = $oSQL->dbname;
 $tblName = $_GET["tblName"];
 
-function getInsertCode($toGen, $arrTable, $indent=""){
+define('CODE_INDENT', '    ');
+
+function fieldsByArray($toGen, $arrTable, $strArrName = '$_POST', $indent=''){
+
+    GLOBAL $intra;
+
+    $strFields = '';
+    $strPKs = $arrTable["PKCond"];
+
+    foreach($arrTable['columns'] as $i=>$col){
         
-        GLOBAL $intra;
-        
-        $tblName = $arrTable["table"];
-       
-        $strFields = "";
-        $strValues = "";
-        foreach($arrTable['columns'] as $i=>$col){
-          
-            $rn = $prevCol["DataType"]=="activity_stamp" && $col["DataType"]=="activity_stamp" ? "" : "\r\n".$indent."    ";
-          
-            $strFields .= ($strFields!="" ? $rn.", " : "");
-            $strValues .= ($strValues!="" ? $rn.", " : "");
-          
+        if (preg_match('/insert/i', $toGen)){
+
             if ($col["DataType"]=="PK"){
                 switch($arrTable['PKtype']){
                     case "auto_increment":
                         break;
                     case "GUID":
                     default:
-                        $strFields .= $col["Field"];
-                        $strValues .= ($arrTable['PKtype']=="GUID" ? "@".$col["Field"] : "'\$".$col["Field"]."'");
+                        $strFields .= $col["Field"].' = '.($arrTable['PKtype']=="GUID" ? "@".$col["Field"] : "'\$".$col["Field"]."'");
                         break;
                 }
                 continue;
             }
-            $strFields .= "`".$col["Field"]."`";
-            $strValues .= ($toGen=="INSERT PHP" ? $intra->getSQLValue($col) : " #".$col["Field"]);
-          
-            $prevCol = $col;
-          
+        }
+
+        if ($col["DataType"]=="activity_stamp"){
+            if (preg_match('/update/i', $toGen) && preg_match("/insert/i",$col["Field"]))
+                continue;
         }
         
+        
+        
+        $rn = $prevCol["DataType"]=="activity_stamp" && $col["DataType"]=="activity_stamp" ? "" : "\n".$indent.CODE_INDENT;
+      
+        $strFields .= ($strFields!="" ? $rn.", " : "");
+        $strFields .= (
+                preg_match('/select/i', $toGen)
+                ? $intra->getSQLValue($col).' as '.$col["Field"]
+                : (preg_match('/fields/i', $toGen) 
+                    ?  $col["Field"] 
+                    :  $col["Field"].' = '.$intra->getSQLValue($col)
+                    ) 
+            );
+        $prevCol = $col;
+    
+    }
+
+    if($strArrName!='$_POST'){
+        $strFields = str_replace('$_POST', $strArrName, $strFields);
+    }
+
+    return $indent.CODE_INDENT.$strFields;
+
+}
+
+
+function getInsertCode($toGen, $arrTable, $indent=""){
+        
+        GLOBAL $intra;
+        
+        $tblName = $arrTable["table"];
+
         $strCode = "";
         
         if ($arrTable['PKtype']=="GUID")
             $strCode .= "SET @".$arrTable['PK'][0]."=UUID();\r\n\r\n";
-            
-        $strCode .= "INSERT INTO $tblName (\r\n{$indent}    ";
-        $strCode .= $strFields;
-        $strCode .= "\r\n{$indent}) VALUES (\r\n{$indent}    ";
-        $strCode .= $strValues;
-        $strCode .= ");";
-        
+
+        $strCode .= "INSERT INTO $tblName ";
+        if ($toGen == "INSERT SELECT"){
+            $strCode .= "(\n{$indent}    ".fieldsByArray('INSERT FIELDS', $arrTable)."\r\n{$indent}) SELECT\n{$indent}".
+                fieldsByArray('INSERT SELECT', $arrTable);
+        } else {
+            $strCode .= "SET\n".fieldsByArray('INSERT', $arrTable);
+        }
+
         if ($arrTable['PKtype']=="GUID")
             $strCode .= "\r\n\r\nSELECT @".$arrTable['PK'][0]." as ".$arrTable['PK'][0].";\r\n\r\n";
-        
+
         return $strCode;
+
 }
 
 function getUpdateCode($toGen, $arrTable, $indent=""){
@@ -144,6 +176,7 @@ switch ($_GET["toGen"]){
     
     case "INSERT":
     case "INSERT PHP":
+    case "INSERT SELECT":
         $strCode  = getInsertCode($_GET["toGen"], $arrTable);
         
         break;

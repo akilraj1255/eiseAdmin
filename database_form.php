@@ -93,6 +93,7 @@ if ($dbName!="") {
     $sqlDB = "SHOW TABLE STATUS FROM `$dbName`";
     $rsDB = $oSQL->do_query($sqlDB);
 
+    $arrTables = array();
     while($rwDB = $oSQL->fetch_array($rsDB)){
         $grid->Rows[] = $rwDB;
         //print_r($rwDB);
@@ -102,6 +103,7 @@ if ($dbName!="") {
         if ($rwDB["Name"]=="stbl_entity") {
             $arrFlags["hasEntity"] = true;
         }
+        $arrTables[] = $rwDB['Name'];
     }
     
     if($arrFlags["hasIntraDBSV"]){
@@ -185,6 +187,8 @@ include eiseIntraAbsolutePath."inc-frame_top.php";
 if ($arrFlags["hasEntity"]){
 
     foreach($arrEntityTables as $tableName){
+        if (!in_array($tableName, $arrTables))
+          continue;
         $strEntityHashes .= getTableHash($oSQL, $tableName);
     }
     ?>
