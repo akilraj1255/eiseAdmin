@@ -9,7 +9,7 @@ $title = "A System";
 include ("../common/eiseIntra/inc_intra.php");
 include ("config.php");
 
-$oSQL = new sql($DBHOST, $DBUSER, $DBPASS, $DBNAME, false, CP_UTF8);
+$oSQL = new eiseSQL($DBHOST, $DBUSER, $DBPASS, $DBNAME, false, CP_UTF8);
 
 try {
     $oSQL->connect();
