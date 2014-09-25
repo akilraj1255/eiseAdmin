@@ -16,7 +16,7 @@ define ("commonStuffRelativePath", dirname(eiseIntraRelativePath)."/");
 
 define ("eiseIntraJSPath",  eiseIntraRelativePath.'js/');
 define ("eiseIntraCSSPath",  eiseIntraRelativePath.'css/');
-define ("eiseIntraCSSTheme", 'bluewing');
+define ("eiseIntraCSSTheme", 'eise');
 
 define ("commonStuffAbsolutePath", dirname(eiseIntraAbsolutePath).DIRECTORY_SEPARATOR);
 
