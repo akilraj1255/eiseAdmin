@@ -10,7 +10,7 @@ $rsDB = $oSQL->do_query($sqlDB);
 <?php
 while($rwDB = $oSQL->fetch_array($rsDB)){
 ?>
-<li id="<?php  echo $rwDB["Database"] ; ?>"><span id="db_<?php  echo $rwDB["Database"] ; ?>"><a 
+<li id="db|<?php  echo $rwDB["Database"] ; ?>"><span id="db_<?php  echo $rwDB["Database"] ; ?>"><a 
    target='pane' href="database_form.php?dbName=<?php  echo  $rwDB["Database"]; ?>"><?php  echo $rwDB["Database"] ; ?></a></span>
 
 

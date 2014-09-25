@@ -109,7 +109,10 @@ if ($dbName!="") {
     if($arrFlags["hasIntraDBSV"]){
         $eiseIntraVersion = (int)$oSQL->d("SELECT MAX(fvrNumber) FROM `{$dbName}`.stbl_framework_version");
         include_once ( eiseIntraAbsolutePath."inc_dbsv.php" );
-        $dbsv = new eiseDBSV($oSQL, eiseIntraAbsolutePath.".SQL");
+        $dbsv = new eiseDBSV(array('intra' => $intra
+            , 'dbsvPath'=>eiseIntraAbsolutePath.".SQL"
+            , 'DBNAME' => $dbName)
+        );
         $eiseIntraVersionAvailable = $dbsv->getNewVersion();
     }
     if($arrFlags["hasDBSV"])

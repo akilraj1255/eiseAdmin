@@ -901,7 +901,9 @@ case "upgrade":
     ob_implicit_flush(1);
     echo str_repeat(" ", 4096)."<pre>"; ob_flush();flush();
     
-    $dbsv = new eiseDBSV($oSQL, eiseIntraAbsolutePath.".SQL");
+    $dbsv = new eiseDBSV(array('intra' => $intra
+            , 'dbsvPath'=>eiseIntraAbsolutePath.".SQL"
+            , 'DBNAME' => $dbName));
     
     $dbsv->ExecuteDBSVFramework($dbName);    
     
