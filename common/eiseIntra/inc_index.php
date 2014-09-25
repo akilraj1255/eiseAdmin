@@ -36,8 +36,8 @@ $(document).ready(function(){
                   break;
             }
             if (newHref)
-			     window.frames['pane'].location.href=newHref
-		},
+                 window.frames['pane'].location.href=newHref
+        },
 		afterDblClick:function(node){
 			//alert("text-"+$('span:first',node).text());
 		},
