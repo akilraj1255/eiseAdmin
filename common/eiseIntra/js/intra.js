@@ -135,27 +135,40 @@ init: function( options ) {
     		var url = 'ajax_dropdownlist.php?table='+table+"&prefix="+prefix+(arrData.showDeleted!=undefined ? '&d=1' : '');
             
             var inp = this;
+            var $inpVal = $(inp).prev("input");
             
     		$(this).autocomplete({
                 source: function(request,response) {
-                
+                    
+                    // reset old value
+                    if(request.term.length<3){
+                        response({});
+                        $inpVal.val('');
+                        $inpVal.change();
+                        return;
+                    }
+
                     var extra = $(inp).attr('extra');
                     var urlFull = url+"&q="+encodeURIComponent(request.term)+(extra!=undefined ? '&e='+encodeURIComponent(extra) : '');
                     
                     $.getJSON(urlFull, function(response_json){
                         
+                        // reset old value - we got new JSON!
+                        $inpVal.val('');
+                        $inpVal.change();
+
                         response($.map(response_json.data, function(item) {
                                 return {  label: item.optText, value: item.optValue  }
                             }));
                         });
                         
                     },
-                minLength: 3,
+                minLength: 0,
                 focus: function(event,ui) {
                     event.preventDefault();
                     if (ui.item){
                         $(inp).val(ui.item.label);
-                    } 
+                    }
                 },
                 select: function(event,ui) {
                     event.preventDefault();
@@ -164,14 +177,9 @@ init: function( options ) {
                         $(inp).prev("input").val(ui.item.value);
                     } else 
                         $(inp).prev("input").val("");
+                    $(inp).prev("input").change();
                 },
                 change: function(event, ui){
-                    if (ui.item){
-                        $(inp).val(ui.item.label);
-                        $(inp).prev("input").val(ui.item.value);
-                    } else {
-                        $(inp).prev("input").val("");
-                    }
                 }
     		});
         });
@@ -227,7 +235,7 @@ validate: function( ) {
         .replace("i", "[0-9]{1,2}")
         .replace("s", "[0-9]{1,2}");
     
-    $(this).find('input.eiseIntraValue').each(function() {
+    $(this).find('input.eiseIntraValue,select.eiseIntraValue').each(function() {
         
         var strValue = $(this).val();
         var strType = $(this).attr('type');
@@ -381,15 +389,27 @@ fill: function(data){
                 case 'INPUT':
                 case 'SELECT':
                     $inp.val(fData.v);
+                    $inpNext = $inp.next('input#'+field+'_text');
+                    if ($inpNext && fData.t){
+                        $inpNext.val(fData.t);
+                    }
                     if(fData.rw=='r'){
-                        if($inp.attr('type')!='hidden')
+                        if($inp.attr('type')!='hidden'){
                             $inp.attr('disabled', 'disabled');
+                        }
+                        if($inpNext){
+                            $inpNext.attr('disabled', 'disabled');
+                        }
                     }
                     break;
                 default:
                     var html = '';
                     if(fData.h && fData.v!=''){
-                        html = '<a href="'+fData.h+'">'+fData.v+'</a>';
+                        html = '<a href="'+fData.h+'"'
+                            +(fData.tr 
+                                ? ' target="'+fData.tr+'"'
+                                : '')
+                            +'>'+fData.v+'</a>';
                     } else
                         html = fData.v;
                     $inp.html(html);
@@ -459,6 +479,40 @@ conf: function(varName, value){
         })
         return $(this);
     }
+},
+
+encodeAuthString: function(){
+
+    var frm = this[0];
+
+    var authinput=this.find('#authstring');
+
+    var login = this.find('#login').val();
+    var password = this.find('#password').val();
+    
+    var authstr = login+":"+password;
+
+    if (login.match(/^[a-z0-9_\\\/\@\.\-]{1,50}$/i)==null){
+      alert("You should specify your login name");
+      this.find('#login').focus();
+      return (false);
+    }
+
+    if (password.match(/^[\S ]+$/i)==null){
+      alert("You should specify your password");
+      this.find('#password').focus();
+      return (false);
+    }
+    this.find('#login').val("");
+    this.find('#password').val("");
+    this.find('#btnsubmit').attr('disabled', 'disabled');
+    this.find('#btnsubmit').val("Logging on...");
+
+    authstr = base64Encode(authstr);
+    authinput.val(authstr);
+
+    return authstr;
+
 }
 
 };
@@ -480,6 +534,141 @@ $.fn.eiseIntraForm = function( method ) {
 
 })( jQuery );
 
+/*********************************************************/
+/* eiseIntraAJAX jQuery plug-in */
+/*********************************************************/
+(function( $ ){
+
+var displayMode;
+
+var methods = {
+
+fillTable: function(ajaxURL, conf){
+    var $tbody = this;
+    var $historyItemTemplate = $tbody.find('.eif_template');
+
+    // hide "no events"
+    var curDisplayMode = $tbody.find('.eif_notfound').css("display")
+    displayMode = (curDisplayMode=='none' ? displayMode : curDisplayMode);
+
+    $tbody.find('.eif_notfound').css("display", "none");
+
+    // remove loaded items
+    $tbody.find('.eif_loaded').remove();
+
+    // show spinner
+    $tbody.find('.eif_spinner').css("display", displayMode);
+
+    var strURL = ajaxURL;
+
+    $.getJSON(strURL,
+        function(data){
+
+            $tbody.find('.eif_spinner').css("display", 'none');
+
+            if(conf && conf.beforeFill)
+                conf.beforeFill(data);
+
+            if (data.ERROR){
+                alert(data.ERROR);
+                return;
+            }
+
+            if(data.data.length==0){
+                $tbody.find('.eif_notfound').css("display", displayMode);
+            }
+
+            $.each(data.data, function(i, rw){
+                  
+                // 1. clone elements of .eif_temlplate, append them to tbody
+                var $newItem = $historyItemTemplate.clone(true);
+
+                $newItem.each(function(){
+                    // 2. fill-in data to cloned elements
+                    var $subItem = $(this);
+                    $.each(rw, function (field, value){
+
+                        // set data
+                        var v = (value && typeof(value.v)!='undefined' ? value.v : value);
+                        var $elem = $subItem.find('.eif_'+field);
+                        if (!$elem[0])
+                            return true; //continue
+                        switch ($elem[0].nodeName){
+                            case "INPUT":
+                            case "SELECT":
+                                $elem.val(v);
+                                break;
+                            case "A":
+                                if(value && typeof(value.h)!='undefined'){
+                                    if(value.h!='' && value.v!=''){
+                                        $elem.attr('href', value.h);
+                                        $elem.html(value.v);
+                                    } else {
+                                        $elem.remove();
+                                    }
+                                } else {
+                                    $elem.remove();
+                                }
+                                break;
+                            default:
+                                $elem.html(v);
+                                break;
+                        }
+                        
+
+                        // 3. make eif_invisible fields visible if data is set
+                        if ($elem[0] && v && v!=''){
+                            var invisible = $elem.parents('.eif_invisible')[0];
+                            if(invisible)
+                                $(invisible).removeClass('eif_invisible');
+                        }
+
+                    })
+
+                    // 4. paint eif_evenodd accordingly
+                    if($(this).hasClass('eif_evenodd')){
+                        $(this).addClass('tr'+i%2);
+                    }
+
+                    $(this).addClass('eif_loaded');
+
+                })
+                $newItem.first().addClass('eif_startblock');
+                $newItem.last().addClass('eif_endblock');
+                  
+                // 5. TADAM! make it visible!
+                $newItem.removeClass('eif_template');
+                
+                $tbody.append($newItem);
+                
+                    
+            });
+            
+            if(conf && conf.afterFill)
+                conf.afterFill(data);
+
+            
+    });  
+}
+
+}
+
+
+$.fn.eiseIntraAJAX = function( method ) {  
+
+
+    if ( methods[method] ) {
+        return methods[method].apply( this, Array.prototype.slice.call( arguments, 1 ));
+    } else if ( typeof method === 'object' || ! method ) {
+        return methods.init.apply( this, arguments );
+    } else {
+        $.error( 'Method ' +  method + ' not exists for jQuery.eiseIntraForm' );
+    } 
+
+};
+
+
+})( jQuery );
 
 function intraInitializeForm(){eiseIntraInitializeForm()}
 
@@ -520,7 +709,7 @@ function eiseIntraAdjustPane(){
 function eiseIntraAdjustFrameContent(){
     
     var oMenubarHeight = $(".menubar").outerHeight(true);
-    
+
     if (oMenubarHeight!=null) {
         $("#frameContent").css ("padding-top", oMenubarHeight+"px");
     }   
@@ -744,3 +933,106 @@ eiseIntraLayout.prototype.adjustPane = function(){
 
 }
 
+
+/***********
+Auth-related routines 
+***********/
+
+
+function base64ToAscii(c)
+{
+    var theChar = 0;
+    if (0 <= c && c <= 25){
+        theChar = String.fromCharCode(c + 65);
+    } else if (26 <= c && c <= 51) {
+        theChar = String.fromCharCode(c - 26 + 97);
+    } else if (52 <= c && c <= 61) {
+        theChar = String.fromCharCode(c - 52 + 48);
+    } else if (c == 62) {
+        theChar = '+';
+    } else if( c == 63 ) {
+        theChar = '/';
+    } else {
+        theChar = String.fromCharCode(0xFF);
+    } 
+    return (theChar);
+}
+
+function base64Encode(str) {
+    var result = "";
+    var i = 0;
+    var sextet = 0;
+    var leftovers = 0;
+    var octet = 0;
+
+    for (i=0; i < str.length; i++) {
+         octet = str.charCodeAt(i);
+         switch( i % 3 )
+         {
+         case 0:
+                {
+                    sextet = ( octet & 0xFC ) >> 2 ;
+                    leftovers = octet & 0x03 ;
+                    // sextet contains first character in quadruple
+                    break;
+                }
+          case 1:
+                {
+                    sextet = ( leftovers << 4 ) | ( ( octet & 0xF0 ) >> 4 );
+                    leftovers = octet & 0x0F ;
+                    // sextet contains 2nd character in quadruple
+                    break;
+                }
+          case 2:
+
+                {
+
+                    sextet = ( leftovers << 2 ) | ( ( octet & 0xC0 ) >> 6 ) ;
+                    leftovers = ( octet & 0x3F ) ;
+                    // sextet contains third character in quadruple
+                    // leftovers contains fourth character in quadruple
+                    break;
+                }
+
+         }
+         result = result + base64ToAscii(sextet);
+         // don't forget about the fourth character if it is there
+
+         if( (i % 3) == 2 )
+         {
+               result = result + base64ToAscii(leftovers);
+         }
+    }
+
+    // figure out what to do with leftovers and padding
+    switch( str.length % 3 )
+    {
+    case 0:
+        {
+             // an even multiple of 3, nothing left to do
+             break ;
+        }
+
+    case 1:
+        {
+            // one 6-bit chars plus 2 leftover bits
+            leftovers =  leftovers << 4 ;
+            result = result + base64ToAscii(leftovers);
+            result = result + "==";
+            break ;
+        }
+
+    case 2:
+        {
+            // two 6-bit chars plus 4 leftover bits
+            leftovers = leftovers << 2 ;
+            result = result + base64ToAscii(leftovers);
+            result = result + "=";
+            break ;
+        }
+
+    }
+
+    return (result);
+
+}

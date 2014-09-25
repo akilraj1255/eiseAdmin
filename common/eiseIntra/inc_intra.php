@@ -9,13 +9,21 @@ eiseIntra core class
 include "inc_config.php";
 include "inc_mysqli.php";
 
+/*
 $arrJS[] = eiseIntraRelativePath."intra.js";
 $arrJS[] = eiseIntraRelativePath."intra_execute.js";
 
 $arrCSS[] = imagesRelativePath."sprites/sprite.css";
 $arrCSS[] = eiseIntraRelativePath."intra.css";
 $arrCSS[] = commonStuffRelativePath."screen.css";
+*/
 
+$arrJS[] = jQueryRelativePath."jquery-1.6.1.min.js";
+$arrJS[] = eiseIntraJSPath."intra.js";
+$arrJS[] = eiseIntraJSPath."intra_execute.js";
+
+$arrCSS[] = eiseIntraCSSPath.'themes/'.eiseIntraCSSTheme.'/screen.css';
+$arrCSS[] = imagesRelativePath."sprites/sprite.css";
 
 
 class eiseIntra {
@@ -85,6 +93,15 @@ function __construct($oSQL = null, $conf = Array()){ //$oSQL is not mandatory an
 /**********************************
    Authentication Routines
 /**********************************/
+function decodeAuthString($authstring){
+
+    $auth_str = base64_decode($authstring);
+        
+    preg_match("/^([^\:]+)\:([\S ]+)$/i", $auth_str, $arrMatches);
+
+    return Array($arrMatches[1], $arrMatches[2]);
+}
+
 function Authenticate($login, $password, &$strError, $method="LDAP"){
     
     $oSQL = $this->oSQL;
@@ -450,7 +467,7 @@ function showTextBox($strName, $strValue, $arrConfig=Array()) {
     $flagWrite = isset($arrConfig["FlagWrite"]) ? $arrConfig["FlagWrite"] : $this->arrUsrData["FlagWrite"];
     
     $strClass = $this->handleClass($arrConfig);
-    
+   
     $strAttrib = $arrConfig["strAttrib"];
     if ($flagWrite){
         $type = (in_array($arrConfig['type'], $this->arrHTML5AllowedInputTypes) ? $arrConfig["type"] : 'text');
@@ -484,7 +501,9 @@ function showTextArea($strName, $strValue, $arrConfig=Array()){
     $strClass = $this->handleClass($arrConfig);
     
     if ($flagWrite){
-        $strRet .= "<textarea name=\"".$strName."\"";
+        $strRet .= "<textarea"
+            ." id=\"".($arrConfig['id'] ? $arrConfig['id'] : $strName)."\""
+            ." name=\"".$strName."\"";
         if($strAttrib) $strRet .= " ".$strAttrib;
         $strRet .= ($strClass ? " ".$strClass : "").
             ($arrConfig["required"] ? " required=\"required\"" : "").">";
@@ -625,13 +644,23 @@ function showAjaxDropdown($strFieldName, $strValue, $arrConfig) {
     if(!is_array($arrConfig)){
         $arrConfig = Array("strAttrib"=>$arrConfig);
     }
-    
+
+    $confSource = 'source';$confSource_compat = 'strTable';
+    $confPrefix = 'prefix';$confPrefix_compat = 'strPrefix';
+
+    $src = ($arrConfig[$confSource] ?  $confSource : $confSource_compat);
+    $prf = ($arrConfig[$confPrefix] ?  $confPrefix : $confPrefix_compat);
+
+    if(!isset($arrConfig[$src]))
+        throw new Exception("AJAX drop-down box has no source specified", 1);
+
+
     $flagWrite = isset($arrConfig["FlagWrite"]) ? $arrConfig["FlagWrite"] : $this->arrUsrData["FlagWrite"];
     
     $oSQL = $this->oSQL;
     
     if ($strValue!="" && $arrConfig["strText"]==""){
-        $rs = $this->getDataFromCommonViews($strValue, "", $arrConfig["strTable"], $arrConfig["strPrefix"]);
+        $rs = $this->getDataFromCommonViews($strValue, "", $arrConfig[$src], $arrConfig[$prf]);
         $rw = $oSQL->fetch_array($rs);
         $arrConfig["strText"] = $rw["optText"];
     }
@@ -643,9 +672,13 @@ function showAjaxDropdown($strFieldName, $strValue, $arrConfig) {
     
     if ($flagWrite){
         $strOut .= $this->showTextBox($strFieldName."_text", $arrConfig["strText"]
-            , Array("FlagWrite"=>true
-                , "strAttrib" => $arrConfig["strAttrib"]." src=\"{table:'{$arrConfig["strTable"]}', prefix:'{$arrConfig["strPrefix"]}'}\" autocomplete=\"off\""
-                , "class" => array_merge($arrConfig["class"], Array("eiseIntra_ajax_dropdown"))));
+            , array_merge(
+                $arrConfig 
+                , Array("FlagWrite"=>true
+                    , "strAttrib" => $arrConfig["strAttrib"]." src=\"{table:'{$arrConfig[$src]}', prefix:'{$arrConfig[$prf]}'}\" autocomplete=\"off\""
+                    , "class" => array_merge($arrConfig["class"], Array("eiseIntra_ajax_dropdown")))
+                )
+            );
     } else {
         $strOut .= "<div id=\"span_{$strFieldName}\"{$strClass}>"
             .($arrConfig['href'] ? "<a href=\"{$arrConfig['href']}\"".($arrConfig["target"] ? " target=\"{$arrConfig["target"]}\"" : '').">" : '')
@@ -861,10 +894,6 @@ function getSQLValue($col, $flagForArray=false){
         else
            $strValue = "'\".(integer)\$_POST['".$col["Field"]."'][\$i].\"'";
         break;
-      case "text":
-      case "varchar":
-        $strValue = "\".\$oSQL->e($strPost).\"";
-        break;
       case "binary":
         $strValue = "\".\$oSQL->e(\$".$col["Field"].").\"";
         break;
@@ -886,8 +915,10 @@ function getSQLValue($col, $flagForArray=false){
         $strValue = "\".($strPost!=\"\" ? \$oSQL->e($strPost) : \"NULL\").\"";
         break;
       case "PK":
+      case "text":
+      case "varchar":
       default:
-        $strValue = "'\".$strPost.\"'";
+        $strValue = "\".\$oSQL->e($strPost).\"";
         break;
     }
     return $strValue;
@@ -1002,11 +1033,14 @@ function result2JSON($rs, $arrConf = array()){
 
             if (isset($rw[$key.'_text'])){
                 $arrRW[$key]['t'] = $rw[$key.'_text'];
+                unset($rw[$key.'_text']);
             }
 
             if (($arrConf['flagAllowDeny']=='allow' && in_array($key, $arrPermittedFields))
                 || ($arrConf['flagAllowDeny']=='deny' && !in_array($key, $arrPermittedFields))
-                || $arrConf['fields'][$key]['disabled'] || $arrConf['fields'][$key]['static']){
+                || $arrConf['fields'][$key]['disabled'] || $arrConf['fields'][$key]['static']
+                || !$this->arrUsrData['FlagWrite']
+                ){
 
                 $arrRW[$key]['rw'] = 'r';
 
@@ -1014,12 +1048,27 @@ function result2JSON($rs, $arrConf = array()){
 
             if (isset($arrConf['arrHref'][$key]) || $arrConf['fields'][$key]['href']){
                 $href = ($arrConf['arrHref'][$key] ? $arrConf['arrHref'][$key] : $arrConf['fields'][$key]['href']);
-                foreach ($rw as $kkey => $vvalue)
-                    $href = str_replace("[".$kkey."]", urlencode($vvalue), $href);
+                $target = $arrConf['fields'][$key]['target'];
+                foreach ($rw as $kkey => $vvalue){
+                    $href = str_replace("[".$kkey."]", (strpos($cell['href'], "[{$rowKey}]")==0 
+                                ? $vvalue // avoid urlencode() for first argument
+                                : urlencode($vvalue)), $href);
+                    $target = str_replace("[".$kkey."]", $vvalue, $target);
+                }
                 $arrRW[$key]['h'] = $href;
                 $arrRW[$key]['rw'] = 'r';
+                if ($target) {
+                    $arrRW[$key]['tr'] = $target;
+                }
             }
         }
+        $arrRW_ = $arrRW;
+        foreach($arrRW_ as $key=>$v){
+            if(isset($arrRW_[$key.'_text'])){
+                unset($arrRW[$key.'_text']);
+            }
+        }
+
         $arrRet[] = $arrRW;
     }
     return ($arrConf['flagEncode'] ? json_encode($arrRet) : $arrRet);
@@ -1030,10 +1079,10 @@ function unq($sqlReadyValue){
     return (strtoupper($sqlReadyValue)=='NULL' ? null : (string)preg_replace("/^(')(.*)(')$/", '\2', $sqlReadyValue));
 }
 
-function decPHP2SQL($val){
+function decPHP2SQL($val, $valueIfNull=null){
     return ($val!=='' 
         ? (double)str_replace($this->conf['decimalSeparator'], '.', str_replace($this->conf['thousandsSeparator'], '', $val))
-        : 'NULL'
+        : ($valueIfNull===null ? 'NULL' : $valueIfNull)
         );
 }
 
@@ -1151,6 +1200,25 @@ function getUserData_All($usrID, $strWhatData='all'){
             return $rwUser[$strWhatData];
    }
 }
+
+
+/******************************************************************************/
+/* static functions                                                           */
+/******************************************************************************/
+static function getFullHREF($iframeHREF){
+    $prjDir = dirname($_SERVER['REQUEST_URI']);
+    $flagHTTPS = preg_match('/^HTTPS/', $_SERVER['SERVER_PROTOCOL']);
+    $strURL = 'http'
+        .($flagHTTPS ? 's' : '')
+        .'://'
+        .$_SERVER['SERVER_NAME']
+        .($_SERVER['SERVER_PORT']!=($flagHTTPS ? 443 : 80) ? ':'.$_SERVER['SERVER_PORT'] : '')
+        .$prjDir.'/'
+        .'index.php?pane='.urlencode($iframeHREF);
+    return $strURL;
+}
+
+
 
 /******************************************************************************/
 /* ARCHIVE/RESTORE ROUTINES                                                   */

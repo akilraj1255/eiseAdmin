@@ -303,6 +303,8 @@ public function addAction($arrAction = null){
         $oSQL->do_query($sqlInsATV);
     }
     
+    $this->onActionPlan($this->arrAction['actID'], $this->arrAction['aclOldStatusID'], $this->arrAction['aclNewStatusID']);
+
     return $this->arrAction["aclGUID"];
     
 }
@@ -408,7 +410,7 @@ function finishAction(){
         , stlDepartureActionID='{$this->arrAction["aclGUID"]}'
         , stlEditBy='{$this->intra->usrID}', stlEditDate=NOW()
         WHERE stlEntityItemID='{$this->entItemID}' AND stlATD IS NULL";
-        
+
         $sql[] = "INSERT INTO stbl_status_log (
             stlGUID
             , stlEntityID
@@ -475,8 +477,13 @@ function finishAction(){
         for($i=0;$i<count($sql);$i++){
             $oSQL->do_query($sql[$i]);
         }
+
+        $this->onStatusDeparture($this->arrAction['aclOldStatusID']);
+        $this->onStatusArrival($this->arrAction['aclNewStatusID']);
         
     }
+
+    $this->onActionFinish($this->arrAction['actID'], $this->arrAction['aclOldStatusID'], $this->arrAction['aclNewStatusID']);
 }
 
 public function prepareActions(){
@@ -934,6 +941,8 @@ function startAction(){
             , {$entID}EditBy='{$this->intra->usrID}', {$entID}EditDate=NOW()
             WHERE {$entID}ID='{$entItemID}'";
     $oSQL->do_query($sqlUpdEntTable);
+
+    $this->onActionFinish($this->arrAction['actID'], $this->arrAction['aclOldStatusID'], $this->arrAction['aclNewStatusID']);
     
 }
 
@@ -960,34 +969,39 @@ function cancelAction(){
             AND stlDepartureActionID='{$this->arrAction["aclGUID"]}'"));
 
         //delete traced attributes for the STL
-        $sql[] = "DELETE FROM {$this->rwEnt["entTable"]}_log WHERE l{$this->entID}GUID='{$stlToDelete}'";
+        $this->oSQL->q("DELETE FROM {$this->rwEnt["entTable"]}_log WHERE l{$this->entID}GUID='{$stlToDelete}'");
 
         // delete status log entry, if any
-        $sql[] = "DELETE FROM stbl_status_log WHERE stlGUID='{$stlToDelete}'";
+        $this->oSQL->q("DELETE FROM stbl_status_log WHERE stlGUID='{$stlToDelete}'");
 
         // update departure action for previous status log entry
-        $sql[] = "UPDATE stbl_status_log SET stlATD=NULL, stlDepartureActionID=NULL WHERE stlGUID='{$rwSTLLast["stlGUID"]}'";
+        $this->oSQL->q("UPDATE stbl_status_log SET stlATD=NULL, stlDepartureActionID=NULL WHERE stlGUID='{$rwSTLLast["stlGUID"]}'");
 
         if (empty($this->arrNewData["isUndo"])) {
             if ($this->arrAction["aclActionPhase"]>=2){ // if action is already finish and it's not UNDO, it's cancel
                 throw new Exception('Action cannot be cancelled, it is already complete');
             }
             //cancel the action
-            $sql[] = "UPDATE stbl_action_log SET aclActionPhase=3
+            $this->oSQL->q("UPDATE stbl_action_log SET aclActionPhase=3
                 , aclEditBy='{$this->intra->usrID}'
                 , aclEditDate = NOW()
-                WHERE aclGUID='{$this->arrAction["aclGUID"]}'";
+                WHERE aclGUID='{$this->arrAction["aclGUID"]}'");
+            
+            $this->onActionCancel($this->arrAction['actID'], $this->arrAction['aclOldStatusID'], $this->arrAction['aclNewStatusID']);
+
         } else {
             //delete the action
-            $sql[] = "DELETE FROM {$this->rwEnt["entTable"]}_log 
-                WHERE l{$this->entID}GUID='{$this->arrAction["aclGUID"]}'";
+            $this->oSQL->q("DELETE FROM {$this->rwEnt["entTable"]}_log 
+                WHERE l{$this->entID}GUID='{$this->arrAction["aclGUID"]}'");
                 
-            $sql[] = "DELETE FROM stbl_action_log
-                WHERE aclGUID='{$this->arrAction["aclGUID"]}'";
+            $this->oSQL->q("DELETE FROM stbl_action_log
+                WHERE aclGUID='{$this->arrAction["aclGUID"]}'");
+
+            $this->onActionUndo($this->arrAction['actID'], $this->arrAction['aclOldStatusID'], $this->arrAction['aclNewStatusID']);
         }
 
         // update entity table
-        $sql[] = "UPDATE {$this->rwEnt["entTable"]} SET
+        $this->oSQL->q("UPDATE {$this->rwEnt["entTable"]} SET
             {$this->entID}ActionLogID=(SELECT aclGUID FROM stbl_action_log INNER JOIN stbl_action ON aclActionID=actID AND actEntityID='{$this->entID}' 
                   WHERE aclEntityItemID='{$entItemID}' AND aclActionID<>2 AND aclActionPhase=2 
                   ORDER BY aclATA DESC LIMIT 0,1)
@@ -997,19 +1011,16 @@ function cancelAction(){
                 : ""
             )."
             , {$this->entID}EditBy='{$this->intra->usrID}', {$this->entID}EditDate=NOW()
-            WHERE {$this->entID}ID='{$entItemID}'";
+            WHERE {$this->entID}ID='{$entItemID}'");
 
     } else {
-        $sql[] = "DELETE FROM {$this->rwEnt["entTable"]}_log 
-           WHERE l{$this->entID}GUID='{$this->arrAction["aclGUID"]}'";
+        $this->oSQL->q("DELETE FROM {$this->rwEnt["entTable"]}_log 
+           WHERE l{$this->entID}GUID='{$this->arrAction["aclGUID"]}'");
         //we delete action itself
-        $sql[] = "DELETE FROM stbl_action_log WHERE aclGUID='{$this->arrAction["aclGUID"]}'";
+        $this->oSQL->q("DELETE FROM stbl_action_log WHERE aclGUID='{$this->arrAction["aclGUID"]}'");
     }
 
-    for ($i=0;$i<count($sql);$i++) {
-        $this->oSQL->do_query($sql[$i]);
-    }
-
+    
 }
 
 
@@ -1037,7 +1048,7 @@ function GetJoinSentenceByCBSource($sqlSentence, $entField, &$strText, &$strValu
 /***********************************************************************************/
 /* Comments Routines                                                               */
 /***********************************************************************************/
-function updateComments($DataAction){
+static function updateComments($DataAction){
 
 GLOBAL $intra;
 
@@ -1084,7 +1095,7 @@ switch ($DataAction) {
 /***********************************************************************************/
 /* File Attachment Routines                                                        */
 /***********************************************************************************/
-function updateFiles($DataAction){
+static function updateFiles($DataAction){
     
     GLOBAL $intra;
     
@@ -1098,8 +1109,11 @@ function updateFiles($DataAction){
 switch ($da) {
     case "deleteFile":
         $oSQL->q("START TRANSACTION");
-        $rwFile = $oSQL->fetch_array($oSQL->do_query("SELECT * FROM stbl_file WHERE filGUID='{$_GET["filGUID"]}}'"));
-        unlink($arrSetup["stpFilesPath"].$rwFile["filNamePhysical"]);
+        $rwFile = $oSQL->fetch_array($oSQL->do_query("SELECT * FROM stbl_file WHERE filGUID='{$_GET["filGUID"]}'"));
+
+        $filesPath = self::checkFilePath($arrSetup["stpFilesPath"]);
+
+        unlink($filesPath.$rwFile["filNamePhysical"]);
         $oSQL->do_query("DELETE FROM stbl_file WHERE filGUID='{$_GET["filGUID"]}'");
         $oSQL->q("COMMIT");
         
@@ -1117,11 +1131,12 @@ switch ($da) {
         $filename = Date("Y/m/").$fileGUID.".att";
                             
         //saving the file
-        if(!file_exists($arrSetup["stpFilesPath"].Date("Y/m")))
-            mkdir($arrSetup["stpFilesPath"].Date("Y/m"), "0777", true);
-        echo $arrSetup["stpFilesPath"].$filename;
+        $filesPath = self::checkFilePath($arrSetup["stpFilesPath"]);
+
+        if(!file_exists($filesPath.Date("Y/m")))
+            mkdir($filesPath.Date("Y/m"), 0777, true);
         
-        copy($_FILES["attachment"]["tmp_name"], $arrSetup["stpFilesPath"].$filename);
+        copy($_FILES["attachment"]["tmp_name"], $filesPath.$filename);
         
         //making the record in the database
         $sqlFileInsert = "
@@ -1155,9 +1170,151 @@ switch ($da) {
     default: break;
 }
 
+}
+
+static function checkFilePath($filesPath){
+    if(!$filesPath)
+        throw new Exception('File path not set');
+
+    if($filesPath[strlen($arrSetup['stpFilesPath'])-1]!=DIRECTORY_SEPARATOR)
+        $filesPath=$filesPath.DIRECTORY_SEPARATOR;
+
+    if(!is_dir($filesPath))
+        throw new Exception('File path '.$filesPath.' is not a directory');
+
+    return $filesPath;
+}
+
+static function getFile($filGUID, $filePathVar = 'stpFilesPath'){
+
+    GLOBAL $intra;
+    $oSQL = $intra->oSQL;
+
+    $sqlFile = "SELECT * FROM stbl_file WHERE filGUID=".$oSQL->e($filGUID);
+    $rsFile = $oSQL->do_query($sqlFile);
+
+    if ($oSQL->n($rsFile)==0)
+        throw new Exception('File '.$filGUID.' not found');
+
+    $rwFile = $oSQL->fetch_array($rsFile);
+
+    $filesPath = self::checkFilePath($intra->conf[$filePathVar]);
+
+    header("Content-Type: ".$rwFile["filContentType"]);
+    if(headers_sent())
+        $this->Error('Some data has already been output, can\'t send file');
+    header("Content-Length: ".$rwFile["filLength"]);
+    header('Content-Disposition: inline; filename='.$rwFile["filName"]);
+    header('Cache-Control: private, max-age=0, must-revalidate');
+    header('Pragma: public');
+    ini_set('zlib.output_compression','0');
+
+    $fh = fopen($filesPath.$rwFile["filNamePhysical"], "rb");
+    echo fread($fh, $rwFile["filLength"]);
+    fclose($fh);
 
 }
 
+/***********************************************************************************/
+/* Message Routines                                                                */
+/***********************************************************************************/
+static function updateMessages($newData){
+
+    GLOBAL $intra;
+
+    $oSQL = $intra->oSQL;
+
+    $da = $newData["DataAction"];
+
+    switch($da){
+        case 'messageSend':
+            $sqlMsg = "INSERT INTO stbl_message SET
+                msgEntityID = ".($newData['entID']!="" ? $oSQL->e($newData['entID']) : "NULL")."
+                , msgEntityItemID = ".($newData['entItemID']!="" ? $oSQL->e($newData['entItemID']) : "NULL")."
+                , msgFromUserID = '$intra->usrID'
+                , msgToUserID = ".($newData['msgToUserID']!="" ? $oSQL->e($newData['msgToUserID']) : "NULL")."
+                , msgCCUserID = ".($newData['msgCCUserID']!="" ? $oSQL->e($newData['msgCCUserID']) : "NULL")."
+                , msgSubject = ".$oSQL->e($newData['msgSubject'])."
+                , msgText = ".$oSQL->e($newData['msgText'])."
+                , msgSendDate = NULL
+                , msgReadDate = NULL
+                , msgFlagDeleted = 0
+                , msgInsertBy = '$intra->usrID', msgInsertDate = NOW(), msgEditBy = '$intra->usrID', msgEditDate = NOW()";
+
+            $oSQL->q($sqlMsg);
+            $intra->redirect($intra->translate('Message sent'), $_SERVER["PHP_SELF"]."?{$newData['entID']}ID=".urlencode($newData["entItemID"]));
+            die();
+        case 'messageReply':
+            die();
+        case 'messageReplyAll':
+            die();
+    }
+
+}
+
+static function sendMessages($conf){
+    
+    GLOBAL $intra;
+
+    $oSQL = $intra->oSQL;
+
+    // scan tablefor unsent messages
+    $sqlMsg = "SELECT * 
+        FROM stbl_message 
+            LEFT OUTER JOIN stbl_entity ON msgEntityID=entID
+        WHERE msgSendDate IS NULL ORDER BY msgInsertDate DESC";
+    $rsMsg = $oSQL->q($sqlMsg);
+
+    include_once('../common/eiseMail/inc_eisemail.php');
+
+    $sender  = new eiseMail($conf);
+
+    while($rwMsg = $oSQL->f($rsMsg)){
+
+        $rwUsr_From = $intra->getUserData_All($rwMsg['msgFromUserID'], 'all');
+        $rwUsr_To = $intra->getUserData_All($rwMsg['msgToUserID'], 'all');
+        $rwUsr_CC = $intra->getUserData_All($rwMsg['msgCCUserID'], 'all');
+
+        $rwMsg[self::getItemIDField($rwMsg)] = $rwMsg['msgEntityItemID'];
+
+        $rwMsg = array_merge(array('system' => $conf['system']
+                , 'entItemFormHref' => eiseIntra::getFullHREF(self::getFormURL($rwMsg)))
+            , $rwMsg);
+
+        $msg = array('mail_from'=> ($rwUsr_From['usrName'] ? "\"".$rwUsr_From['usrName']."\"  <".$rwUsr_From['usrEmail'].">" : '')
+            , 'rcpt_to' => ($rwUsr_To['usrName'] ? "\"".$rwUsr_To['usrName']."\"  <".$rwUsr_To['usrEmail'].">" : '')
+            , 'Text' => $rwMsg['msgText']
+            );
+        if ($rwMsg['msgCCUserID'])
+            $msg['CC'] = "\"".$rwUsr_CC['usrName']."\"  <".$rwUsr_CC['usrEmail'].">";
+
+        $msg = array_merge($msg, $rwMsg);
+
+        $sender->addMessage($msg);
+
+    }
+
+    try {
+        $arrMessages = $sender->send();
+    } catch (eiseMailException $e){
+        $strError = $e->getMessage();
+        $arrMessages = $e->getMessages();
+    }
+
+
+    foreach($arrMessages as $msg){
+        $sqlMarkSent = "UPDATE stbl_message SET msgSendDate=".($msg['send_time'] ? "'".date('Y-m-d H:i:s', $msg['send_time'])."'" : 'NULL' )."
+            , msgStatus=".($msg['error'] ? $oSQL->e($msg['error']) : $oSQL->e('Sent'))."
+            , msgEditDate=NOW()
+            , msgEditBy='{$intra->usrID}'
+            WHERE msgID=".$oSQL->e($msg['msgID']);
+        $oSQL->q($sqlMarkSent);
+
+    }
+
+    if($strError)
+        throw new Exception($strError);
+}
 
 
 /***********************************************************************************/
@@ -1680,56 +1837,31 @@ function getEntityItemAllData(){
 	
 }
 
-function upgrade_eiseIntra(){
-    
-    //*
-    
-    $sqlItems = "SELECT aclGUID as guid, 'stbl_action_log' as tbl, 'acl' as prfx, aclInsertDate as dt 
-            FROM stbl_action_log 
-            WHERE aclEntityItemID='{$this->entItemID}'
-        UNION
-        SELECT stlGUID as guid, 'stbl_status_log' as tbl, 'stl' as prfx , stlInsertDate as dt 
-            FROM stbl_status_log
-            WHERE stlEntityItemID='{$this->entItemID}'
-        ORDER BY dt, prfx";
-    $rs = $this->oSQL->q($sqlItems);
-    while($rw = $this->oSQL->f($rs)){
-        $this->oSQL->q("UPDATE {$rw["tbl"]} SET {$rw["prfx"]}ID=".$this->getLogID()." WHERE {$rw["prfx"]}GUID='{$rw["guid"]}'");
-    }
-    
-    return;
-    
-    //*/
-    
-    $this->getEntityItemAllData();
-    
-    $this->oSQL->q("UPDATE stbl_action_log SET aclID=".$this->getLogID()." WHERE aclActionID=1 AND aclEntityItemID='{$this->entItemID}'");
-    
-    if (!is_array($this->rwEnt["STL"]))
-        return;
-    
-    $revSTL = array_reverse($this->rwEnt["STL"]);
-    foreach($revSTL as $guid=>$rwSTL){
-        if ($rwSTL["stlArrivalAction"]["aclGUID"])
-            $this->oSQL->q("UPDATE stbl_action_log SET aclID=".$this->getLogID()." WHERE aclGUID='{$rwSTL["stlArrivalAction"]["aclGUID"]}'");
-        $this->oSQL->q("UPDATE stbl_status_log SET stlID=".$this->getLogID()." WHERE stlGUID='{$rwSTL["stlGUID"]}'");
-        
-        if (!is_array($rwSTL["ACL"]))
-            continue;
-        $arrACL = array_reverse($rwSTL["ACL"]);
-        foreach($arrACL as $guid=>$rwACL){
-             $this->oSQL->q("UPDATE stbl_action_log SET aclID=".$this->getLogID()." WHERE aclGUID='{$rwACL["aclGUID"]}'");
-        }
-    }
-    
-    if (!is_array($this->rwEnt["ACL"]))
-        return;
-    
-    $revACL = array_reverse($this->rwEnt["ACL"]);
-    foreach($revACL as $guid => $rwACL){
-        $this->oSQL->q("UPDATE stbl_action_log SET aclID=".$this->getLogID()." WHERE aclGUID='{$rwACL["aclGUID"]}'");
-    }
-    
+/***************************************************************/
+// event handling prototypes
+/***************************************************************/
+function onActionPlan($actID, $oldStatusID, $newStatusID){
+    //parent::onActionPlan($actID, $oldStatusID, $newStatusID);
+}
+function onActionStart($actID, $oldStatusID, $newStatusID){
+    //parent::onActionStart($actID, $oldStatusID, $newStatusID);
+}
+function onActionFinish($actID, $oldStatusID, $newStatusID){
+    //parent::onActionFinish($actID, $oldStatusID, $newStatusID);
+}
+function onActionCancel($actID, $oldStatusID, $newStatusID){
+    //parent::onActionFinish($actID, $oldStatusID, $newStatusID);
+}
+function onActionUndo($actID, $oldStatusID, $newStatusID){
+    //parent::onActionFinish($actID, $oldStatusID, $newStatusID);
+}
+
+
+function onStatusArrival($staID){
+    //parent::onStatusArrival($staID);
+}
+function onStatusDeparture($staID){
+    //parent::onStatusDeparture($staID);
 }
 
 }

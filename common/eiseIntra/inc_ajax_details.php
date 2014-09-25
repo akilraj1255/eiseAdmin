@@ -8,6 +8,30 @@ else
 $DataAction = $arrIn["DataAction"];
 
 switch ($DataAction){
+    case 'getMessages':
+        include eiseIntraAbsolutePath."inc_entity_item_form.php";
+        try {
+            $oItem = new eiseEntityItemForm($oSQL, $intra, $arrIn['entID'], $arrIn['entItemID']);    
+            $arrFIL = $oItem->getMessages();
+        } catch (Exception $e){
+            echo json_encode(Array("ERROR"=>$e->getMessage()));
+            die();
+        }
+
+        echo json_encode(array('data'=>$arrFIL));
+        die();
+    case 'getFiles':
+        include eiseIntraAbsolutePath."inc_entity_item_form.php";
+        try {
+            $oJob = new eiseEntityItemForm($oSQL, $intra, $arrIn['entID'], $arrIn['entItemID']);    
+            $arrFIL = $oJob->getFiles();
+        } catch (Exception $e){
+            echo json_encode(Array("ERROR"=>$e->getMessage()));
+            die();
+        }
+
+        echo json_encode(array('data'=>$arrFIL));
+        die();
     case 'getActionLog':
         
         include eiseIntraAbsolutePath."inc_entity_item_form.php";
@@ -19,7 +43,7 @@ switch ($DataAction){
             die();
         }
 
-        echo json_encode(array('acl'=>$arrACL));
+        echo json_encode(array('data'=>$arrACL));
         die();
         
 
