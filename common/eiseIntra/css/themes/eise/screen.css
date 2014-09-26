@@ -27,28 +27,35 @@ body{
 	margin-right: 20px;
 }
 #app_title{
-	font-family: "Arial Black", Arial, sans-serif;
+    color: #006699;
+    float: left;
+    font-family: "Arial Black Expanded", "Arial Black",Arial,sans-serif;
+    font-size: 60px;
+    font-stretch: expanded;
     font-weight: 900;
-    font-size: 22px;
-    height: 31px;
-	color: #006699;
-	padding: 10px 10px 5px 10px;
-	text-transform: uppercase;
-    letter-spacing: 7px;
+    height: 65px;
+    line-height: 85px;
+    letter-spacing: -2px;
+    margin-top: -20px;
+    overflow: hidden;
 }
 #login_info{
-	font: 11px Arial;
-    color: #003366;
-    height: 16px;
+	color: #669;
+    font: 11px Arial;
+    height: 10px;
+    left: 160px;
+    padding: 2px 0;
+    position: absolute;
+    top: 45px;
 
 }
 #login_info a:link{
-	color: #003366;
+	color: #669;
 	text-decoration: underline;
 }
 
 #login_info a:visited{
-	color: #003366;
+	color: #669;
 }
 #login_info a:hover{
 	color: #dd0000;
@@ -86,9 +93,17 @@ body{
 	font-weight: bold;
 }
 
+.lang-en {
+    background: url(gb.png) no-repeat;
+}
+
+.lang-ru {
+    background: url(ru.png) no-repeat;
+}
 
 #header {
    background: White url(intra_bg.gif) repeat-x top;
+   height: 70px;
 }
 /* /Header stuff                                                    */
 /********************************************************************/
@@ -187,15 +202,27 @@ h1 {
 
 .eiseIntraForm  fieldset{
     background-color: #EEEEEE;
-    margin-left: 0.5%;
-    margin-top: 1.8em;
-    padding: 0.25% 0.25%;
-}
 }
 
 .eiseIntraForm legend{
     font-size: 1em;
-    font-weight: 600;
+    font-weight: bold;
+}
+
+.eiseIntraForm fieldset:first-of-type {
+    margin-top: 25pt;
+}
+
+.eiseIntraForm fieldset:first-of-type legend {
+    font-size: 14pt;
+    line-height: 18pt;
+}
+
+.eiseIntraForm  label{
+    font-weight: bold;
+    font-size: 0.9em;
+    margin-top: 0.2em;
+    text-align: right;
 }
 
 .eiseIntraMainForm legend {

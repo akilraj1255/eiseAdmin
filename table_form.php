@@ -20,17 +20,17 @@ $arrTable = $intra->getTableInfo($dbName, $tblName);
 
 switch($pane){
   case "Structure":
-        include commonStuffAbsolutePath.'eiseGrid/inc_eiseGrid.php';
-        $arrJS[] = commonStuffRelativePath.'eiseGrid/eiseGrid.js';
-        $arrCSS[] = commonStuffRelativePath.'eiseGrid/eiseGrid.css';
+        include commonStuffAbsolutePath.'eiseGrid2/inc_eiseGrid.php';
+        $arrJS[] = commonStuffRelativePath.'eiseGrid2/eiseGrid.jQuery.js';
+        $arrCSS[] = commonStuffRelativePath.'eiseGrid2/themes/default/screen.css';
         
         $grid = new easyGrid($oSQL
                             ,"tbl"
                             , Array(
-                                    'arrPermissions' => Array('FlagWrite' => true)
+                                    'arrPermissions' => Array('FlagWrite' => (bool)($arrTable['type']!='view'))
                                     , 'flagStandAlone' => false
                                     , 'showControlBar' => true
-                                    , 'controlBarButtons' => 'insert|moveup|movedown'
+                                    , 'controlBarButtons' => 'insert|moveup|movedown|delete'
                                     )
                             );
         $grid->Columns[]=Array(
@@ -41,6 +41,7 @@ switch($pane){
            'field'=>"Field"
            , 'title'=>"Field"
            , 'type' => "text"
+           , 'width' => '38%'
         );
         $grid->Columns[] = Array(
            'field'=>"Type"
@@ -52,6 +53,8 @@ switch($pane){
            'field'=>"DataType"
             , 'title'=>"Data Type"
             , 'type' => "text"
+            , 'width' => '80px'
+            , 'disabled' => true
         );
 
         $grid->Columns[] = Array(
@@ -64,6 +67,7 @@ switch($pane){
            'field'=>"Null"
            , 'title'=>"Null"
            , 'type' => "text"
+           , 'width' => '40px'
         );
 
         $grid->Columns[] = Array(
@@ -76,11 +80,13 @@ switch($pane){
            'field'=>"Extra"
            , 'title'=>"Extra"
            , 'type' => "text"
+           , 'disabled' => true
         );
         $grid->Columns[] = Array(
            'field'=>"Comments"
            , 'title'=>"Comments"
            , 'type' => "text"
+           , 'width' => '62%'
         );
 
         foreach($arrTable['columns'] as $i=>$col){
@@ -161,19 +167,20 @@ $arrActions[]= Array ("title" => "Back to DB"
 	   , "action" => "database_form.php?dbName=$dbName"
 	   , "class"=> "ss_arrow_left"
 	);
-    
-$arrActions[]= Array ("title" => "INSERT...SELECT"
-	   , "action" => "codegen_form.php?dbName=$dbName&tblName=$tblName&toGen=INSERT%20SELECT"
-	   , "class"=> "ss_script"
-	);
-$arrActions[]= Array ("title" => "INSERT SIMPLE"
-	   , "action" => "codegen_form.php?dbName=$dbName&tblName=$tblName&toGen=INSERT"
-	   , "class"=> "ss_script"
-	);
-$arrActions[]= Array ("title" => "UPDATE"
-	   , "action" => "codegen_form.php?dbName=$dbName&tblName=$tblName&toGen=UPDATE"
-	   , "class"=> "ss_script"
-	);
+if($arrTable['type']!='view'){
+    $arrActions[]= Array ("title" => "INSERT...SELECT"
+           , "action" => "codegen_form.php?dbName=$dbName&tblName=$tblName&toGen=INSERT%20SELECT"
+           , "class"=> "ss_script"
+        );
+    $arrActions[]= Array ("title" => "INSERT SIMPLE"
+           , "action" => "codegen_form.php?dbName=$dbName&tblName=$tblName&toGen=INSERT"
+           , "class"=> "ss_script"
+        );
+    $arrActions[]= Array ("title" => "UPDATE"
+           , "action" => "codegen_form.php?dbName=$dbName&tblName=$tblName&toGen=UPDATE"
+           , "class"=> "ss_script"
+        );    
+}
 $arrActions[]= Array ("title" => "eiseGrid"
 	   , "action" => "codegen_form.php?dbName=$dbName&tblName=$tblName&toGen=easyGrid"
 	   , "class"=> "ss_script"
@@ -186,17 +193,20 @@ $arrActions[]= Array ("title" => "eiseList"
 	   , "action" => "codegen_form.php?dbName=$dbName&tblName=$tblName&toGen=eiseList"
 	   , "class"=> "ss_script"
 	);
-    
-$arrActions[]= Array ("title" => "Form"
-	   , "action" => "codegen_form.php?dbName=$dbName&tblName=$tblName&toGen=Form"
-	   , "class"=> "ss_script"
-	);
+
+if($arrTable['type']!='view'){
+    $arrActions[]= Array ("title" => "Form"
+    	   , "action" => "codegen_form.php?dbName=$dbName&tblName=$tblName&toGen=Form"
+    	   , "class"=> "ss_script"
+    	);
+}
 $arrActions[]= Array ("title" => "Description"
 	   , "action" => "codegen_form.php?dbName=$dbName&tblName=$tblName&toGen=table_Description"
 	   , "class"=> "ss_script"
 	);
     
-include eiseIntraAbsolutePath."inc-frame_top.php";?>
+include eiseIntraAbsolutePath."inc-frame_top.php";
+?>
 
 
 
@@ -215,6 +225,16 @@ $(document).ready(function() {
                     break;
             }
         } });
+
+    if(typeof($().eiseGrid)=='function'){
+        $('.eiseGrid').eiseGrid();
+
+        $('.eiseGrid').eiseGrid('change', 'Field, Type, Default, Null, Comments', function(){tableGridChanged()})
+        $('.eiseGrid').eiseGrid('delete', function(){tableGridChanged()});
+
+        $('#generateALTER').click(function(){generateALTER()})
+    }
+
 });
 </script>
 
@@ -225,20 +245,16 @@ $(document).ready(function() {
 <li><a href="#tabs-1">Data</a></li>
 </ul>
 <div id="tabs-0">
-<h1>Table <?php echo $tblName; ?> @ <?php echo $dbName; ?></h1>
+<div id="tableName">
+<h1>Table <?php echo $tblName; ?> @ <?php echo $dbName; ?></h1><input id="generateALTER" type="button" value="<?php echo $intra->translate('Generate').' ALTER TABLE'; ?>" disabled>
+<input type="hidden" id="tblName" value="<?php echo $tblName ?>">
+</div>
 <?php 
 if ($pane=="Structure"){
     $grid->Execute();
+    echo '<div id="textarea_source"> <textarea id=""></textarea> </div>';
 }
 ?>
-<form action="script_apply.php">
-<input type="hidden" name="tblName" id="tblName" value="<?php  echo $tblName ; ?>">
-<td>
-<input type="button" class="script" value="Generate Script" onclick="generateAlter();" style="height:22px; width:auto;"><br>
-<textarea name="script" id="script" style="width:300px;height:150px;"></textarea><br>
-<input type="submit" value="Apply with DBSV" disabled>
-</td>
-</form>
 </div>
 <div id="tabs-1">
 <?php 
@@ -251,9 +267,38 @@ if ($pane=="Data"){
 
 
 <style>
+<?php 
+if($arrTable['type']!='view'):
+ ?>
 th.tbl_Field {
     text-align:right;
 }
+<?php 
+endif;
+ ?>
+#tableName {
+    clear: both;
+    line-height: 2.4em;
+    overflow: hidden;
+    vertical-align: bottom;
+}
+#tableName h1 {
+    float: left;
+}
+#tableName input {
+    margin: 0 10px;
+    vertical-align: bottom;
+}
+#textarea_source textarea{
+    width: 100%;
+    min-height: 20em;
+    font-family: Courier, "Courier New", monospace;
+}
+
+#textarea_source {
+    display: none;
+}
+
 </style>
 <?php
 include eiseIntraAbsolutePath."inc-frame_bottom.php";

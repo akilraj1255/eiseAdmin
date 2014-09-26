@@ -5,9 +5,9 @@ include "common/common.php";
 $dbName = (isset($_POST["dbName"]) ? $_POST["dbName"] : $_GET["dbName"]);
 $oSQL->select_db($dbName);
 
-include commonStuffAbsolutePath.'eiseGrid/inc_eiseGrid.php';
-$arrJS[] = commonStuffRelativePath.'eiseGrid/eiseGrid.js';
-$arrCSS[] = commonStuffRelativePath.'eiseGrid/eiseGrid.css';
+include commonStuffAbsolutePath.'eiseGrid2/inc_eiseGrid.php';
+$arrJS[] = commonStuffRelativePath.'eiseGrid2/eiseGrid.jQuery.js';
+$arrCSS[] = commonStuffRelativePath.'eiseGrid2/themes/default/screen.css';
 
 $grid = new easyGrid($oSQL
                     ,"tbl"
@@ -25,12 +25,14 @@ $grid->Columns[]=Array(
     'field'=>"chk"
     , 'title' => "chk"
     , 'type' => "checkbox"
+    , 'width' => '20px'
 );
 $grid->Columns[]=Array(
 	'field'=>"Name"
     , 'title' => "Name"
 	, 'type' => "text"
     , 'href' => "table_form.php?dbName=$dbName&tblName=[Name]"
+    , 'width' => '30%'
 );
 $grid->Columns[] = Array(
    'title' => "Rows"
@@ -84,7 +86,7 @@ $grid->Columns[] = Array(
    'title' => "Comment"
    , 'field' => "Comment"
    , 'type' => "text"
-   , 'width' => "100%"
+   , 'width' => '70%'
    , 'disabled'=>true
 );
 
@@ -176,7 +178,7 @@ include eiseIntraAbsolutePath."inc-frame_top.php";
 <td width="40%">
 <div class="eiseIntraField">
 <label><?php  echo $intra->translate('Name') ; ?>:</label>
-<?php echo $intra->showTextBox('dbName', $dbName) ?>
+<?php echo $intra->showTextBox('dbName', $dbName, (array('FlagWrite' => !(bool)$dbName))) ?>
 </div>
 
 <div class="eiseIntraField">
@@ -269,18 +271,24 @@ $grid->Execute();
 <input type="checkbox" name="flagRun" id="flagRun" style="width:auto;"><label for="flagRun">Run query?</label><br>
 </td>
 </tr>
+<tr>
+<td style="text-align:center;"><input value="Save" type="submit" onclick="return confirm('Are you sure you\'d like to create the database?')"></td>
+</tr>
 <?php
 }
 ?>
-<tr>
-<td style="text-align:center;"><input value="Save" type="submit" onclick="return confirm('Are you sure you\'d like to <?php  
-echo ($dbName=="" ? "create" : "update") ; ?> the database?')"></td>
-</tr>
+
 
 </table>
 </fieldset>
 </form>
 <script>
+$(window).load(function(){
+
+    $('.eiseGrid').eiseGrid();
+
+});
+
 function CreateNewTable(){
  var tbl = prompt('Please enter table name:', 'tbl_');
  if (tbl!=null && tbl!="tbl_" && tbl!=""){

@@ -1,15 +1,14 @@
-$(document).ready(function(){  
-	try {
-        easyGridInitialize();
-    }catch(e){}
-    
-});
+function tableGridChanged(){
+
+    $('#generateALTER').removeAttr('disabled');
+
+}
 
 function AddField(){
     easyGridAddRowAfterCurrent("tbl");
 }
 
-function generateAlter(){
+function generateALTER(){
     var strGridName = "tbl";
     var tbl_name = $("#tblName").attr("value");
     var strScript = "";
@@ -35,6 +34,13 @@ function generateAlter(){
     var colComment = document.getElementsByName("Comments[]");
     for (var i=0;i<colInpUpdated.length;i++){
          if (colInpUpdated[i].value=="1"){
+
+            if(colType[i].value==''){
+                alert('Type not set for '+colField[i].value);
+                colType[i].focus();
+                return;
+            }
+
              strScript += (strScript!=""  ? "\r\n\r\n" : "");
              
              strScript += "ALTER TABLE "+tbl_name;
@@ -52,8 +58,8 @@ function generateAlter(){
          }
     }
     
-    areaScript = document.getElementById("script");
-    areaScript.value = strScript;
-    
+    $('#textarea_source textarea').text(strScript);
+
+    $('#textarea_source').dialog({modal: true, width:'62%', title: 'ALTER TABLE'})    
     
 }

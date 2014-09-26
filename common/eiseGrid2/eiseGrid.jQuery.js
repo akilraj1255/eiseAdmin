@@ -967,6 +967,8 @@ eiseGrid.prototype.reset = function(fn){
     });
     this.tbody.find('.eg_tr_no_rows').css('display', 'table-row');
 
+    oGrid.adjustColumnsWidth();
+
     if (typeof(fn)!='undefined'){
         fn();
     }
@@ -979,17 +981,17 @@ eiseGrid.prototype.fill = function(data, fn){
     $.each(data, function(ix, row){
         var $tr = oGrid.addRow();
         $.each(oGrid.conf.columns, function(field, props){
-            
+
             if (typeof(row[field])=='undefined')
                 return true; // continue
 
-            var val = (typeof(row[field])=='object'
+            var val = (row[field]!=null && typeof(row[field])=='object'
                     ? row[field].v
-                    : row[field]);
-            var text = (typeof(row[field].t)!='undefined'
+                    : (row[field]==null ? '' : row[field]));
+            var text = (row[field]!=null && typeof(row[field].t)!='undefined'
                     ? row[field].t
                     : val);
-            var href = (typeof(row[field])=='object'
+            var href = (row[field]!=null && typeof(row[field])=='object'
                     ? row[field].h
                     : row[field]);
 
@@ -997,7 +999,7 @@ eiseGrid.prototype.fill = function(data, fn){
             var $inp = $tr.find('input[name="'+field+'[]"]');
             $inp.val(val);
 
-            if ($td.hasClass("eg_disabled")){
+            if ($td.hasClass("eg_disabled") || !oGrid.conf.arrPermissions.flagWrite){
                 $inp.val(val);
                 $td.find('div').first().text(text);
             } else {

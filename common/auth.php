@@ -4,13 +4,15 @@ header("Expires: 0");
 header("Cache-Control: must-revalidate, post-check=0, pre-check=0");
 ob_start();
 
+include "version.php";
+
 include ("eiseIntra/inc_intra.php");
 include ("config.php");
 
 $js_path = "";
 $easyAdmin = true;
 
-$intra = new eiseIntra();
+$intra = new eiseIntra(null, array('version'=>$version));
 $intra->session_initialize();
 
 if (!$flagNoAuth){
@@ -53,5 +55,7 @@ $intra->checkLanguage();
 if ($intra->local)
     @include "lang.php";
     
+$arrCSS[] = 'eiseAdmin.css';
+
 $strLocal = $intra->local; //backward-compatibility stuff
 ?>
