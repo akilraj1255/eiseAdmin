@@ -17,6 +17,9 @@ function getProcInfo($tr){
 		var procDatabase = $('#prc').eiseGrid('value', $tr, 'DB');
 		var procQuery = $('#prc').eiseGrid('text', $tr, 'INFO').trim();
 
+		if(procQuery=='')
+			return;
+		
 		$('#query_explainer #Info').text(procQuery);
 		$('#query_explainer #DB').text(procDatabase);
 		$('#query_explainer #ID').text(' - ');
@@ -25,8 +28,7 @@ function getProcInfo($tr){
 		$('#query_explainer').dialog(explainerConf);
 		$('#expl').eiseGrid('reset');
 
-		if(procQuery=='')
-			return;
+		
 
 		
 

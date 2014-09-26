@@ -28,7 +28,7 @@ static public function code($arrConfig){
         
         $strCode .= 'include commonStuffAbsolutePath.\'eiseGrid2/inc_eiseGrid.php\';
 
-$arrJS[] = commonStuffRelativePath.\'eiseGrid2/eiseGrid.js\';
+$arrJS[] = commonStuffRelativePath.\'eiseGrid2/eiseGrid.jQuery.js\';
 $arrCSS[] = commonStuffRelativePath.\'eiseGrid2/themes/default/screen.css\';
 
 $arrJS[] = jQueryUIRelativePath.\'js/jquery-ui-1.8.16.custom.min.js\';
