@@ -609,7 +609,7 @@ function Update($arrNewData = array(), $flagExecute = true){
     $oSQL=$this->oSQL;
     $tblName = $this->conf['strTable'];
     
-    $arrTable = $this->getTableInfo($oSQL->dbName, $tblName);
+    $arrTable = $this->getTableInfo($oSQL->dbname, $tblName);
     
     $arrFields = Array();
     $arrValues = Array();

@@ -1,9 +1,9 @@
 <?php
 include "common/auth.php" ;
 
-include commonStuffAbsolutePath.'eiseGrid/inc_eiseGrid.php';
-$arrJS[] = commonStuffRelativePath.'eiseGrid/eiseGrid.js';
-$arrCSS[] = commonStuffRelativePath.'eiseGrid/eiseGrid.css';
+include commonStuffAbsolutePath.'eiseGrid2/inc_eiseGrid.php';
+$arrJS[] = commonStuffRelativePath.'eiseGrid2/eiseGrid.jQuery.js';
+$arrCSS[] = commonStuffRelativePath.'eiseGrid2/themes/default/screen.css';
 
 $oSQL->dbname=(isset($_POST["dbName"]) ? $_POST["dbName"] : $_GET["dbName"]);
 $oSQL->select_db($oSQL->dbname);
@@ -33,22 +33,24 @@ $gridROL->Columns[] = Array(
         , 'field' => "rolID"
         , 'mandatory' => true
         , 'type' => "text"
+        , 'width' => '150px'
 );
 $gridROL->Columns[] = Array(
         'title' => "Title (Loc)"
         , 'field' => "rolTitleLocal"
         , 'type' => "text"
-        , 'width' => "300px;"
+        , 'width' => "300px"
         );
 $gridROL->Columns[] = Array(
         'title' => "Title"
         , 'field' => "rolTitle"
         , 'type' => "text"
-        , 'width' => "300px;"
+        , 'width' => "300px"
 );$gridROL->Columns[] = Array(
         'title' => "all"
         , 'field' => "rolFlagDefault"
         , 'type' => "checkbox"
+        , 'width' => '30px'
 );
 $gridROL->Columns[] = Array(
         'title' => "Members"
@@ -140,7 +142,7 @@ switch($DataAction){
 }
 
 $arrActions[]= Array ('title' => 'Add Row'
-	   , 'action' => "javascript:easyGridAddRow('rol')"
+	   , 'action' => "javascript:eiseGridAddRow('rol')"
 	   , 'class'=> 'ss_add'
 	);
 include eiseIntraAbsolutePath."inc-frame_top.php";
@@ -150,8 +152,12 @@ include eiseIntraAbsolutePath."inc-frame_top.php";
 
 <script>
 $(document).ready(function(){  
-	easyGridInitialize();
+	$('.eiseGrid').eiseGrid();
 });
+
+function eiseGridAddRow(){
+    $('#rol').eiseGrid('addRow');
+}
 </script>
 
 
