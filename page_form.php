@@ -14,9 +14,9 @@ $dbName = $_GET["dbName"] ? $_GET["dbName"] : $_POST["dbName"];
 $oSQL->select_db($dbName);
 
 /*----------------------------------------- PAGE-ROLE matrix definition -----------------------------------------------*/
-include commonStuffAbsolutePath.'eiseGrid/inc_eiseGrid.php';
-$arrJS[] = commonStuffRelativePath.'eiseGrid/eiseGrid.js';
-$arrCSS[] = commonStuffRelativePath.'eiseGrid/eiseGrid.css';
+include commonStuffAbsolutePath.'eiseGrid2/inc_eiseGrid.php';
+$arrJS[] = commonStuffRelativePath.'eiseGrid2/eiseGrid.jQuery.js';
+$arrCSS[] = commonStuffRelativePath.'eiseGrid2/themes/default/screen.css';
 
 $grid = new easyGrid($oSQL
 					, "page_role"
@@ -42,31 +42,37 @@ $grid->Columns[] = Array(
 	, 'sql'=>"SELECT rolID as optValue, rolTitle$strLocal as optText FROM stbl_role"
 	, 'disabled'=>true
     , 'mandatory' => true
+    , 'width' => '50%'
 );
 $grid->Columns[]=Array(
 	'title'=>"Read"
 	,'field'=>"pgrFlagRead"
 	,'type'=>'checkbox'
+  , 'width' => '10%'
 );
 $grid->Columns[]=Array(
 	'title'=>"Write"
 	,'field'=>"pgrFlagWrite"
 	,'type'=>'checkbox'
+  , 'width' => '10%'
 );
 $grid->Columns[]=Array(
 	'title'=>"Insert"
 	,'field'=>"pgrFlagCreate"
 	,'type'=>'checkbox'
+  , 'width' => '10%'
 );
 $grid->Columns[]=Array(
 	'title'=>"Update"
 	,'field'=>"pgrFlagUpdate"
 	,'type'=>'checkbox'
+  , 'width' => '10%'
 );
 $grid->Columns[]=Array(
 	'title'=>"Delete"
 	,'field'=>"pgrFlagDelete"
 	,'type'=>'checkbox'
+  , 'width' => '10%'
 );
 
 $sql = "SELECT stbl_page_role.* 
@@ -387,7 +393,7 @@ include eiseIntraAbsolutePath."inc-frame_top.php";
 
 <script>
 $(document).ready(function(){  
-	easyGridInitialize();
+	$('.eiseGrid').eiseGrid();
 });
 </script>
 
