@@ -207,7 +207,9 @@ if ($_POST["dbName_key"]==""){
    //print_r($_POST);
    
    include_once ( eiseIntraAbsolutePath."inc_dbsv.php" );
-    $dbsv = new eiseDBSV($oSQL, eiseIntraAbsolutePath.".SQL");
+    $dbsv = new eiseDBSV(array('intra' => $intra
+            , 'dbsvPath'=>eiseIntraAbsolutePath.".SQL"
+            , 'DBNAME' => 'mysql'));
    $frameworkDBVersion = $dbsv->getNewVersion();
    
    echo "Database initial script for framework version ".$frameworkDBVersion."\r\n";
@@ -262,6 +264,7 @@ CREATE TABLE `stbl_framework_version` (
     `stpID` INT(11) NOT NULL AUTO_INCREMENT,
     `stpVarName` VARCHAR(255) NULL DEFAULT NULL,
     `stpCharType` VARCHAR(20) NULL DEFAULT NULL,
+    `stpDataSource` varchar(50) NULL,
     `stpCharValue` VARCHAR(1024) NULL DEFAULT NULL,
     `stpCharValueLocal` VARCHAR(1024) NULL DEFAULT NULL,
     `stpFlagReadOnly` TINYINT(4) NULL DEFAULT NULL,
@@ -420,7 +423,6 @@ INSERT INTO `stbl_page` (`pagID`, `pagParentID`, `pagTitle`, `pagTitleLocal`, `p
     (7, 6, 'Users', 'Пользователи', 4, 7, 1, '/users_list.php', '', '', 0, 0, '', '2011-11-21 15:25:47', '', '2013-06-18 00:00:00'),
     (8, 6, 'Access Control', 'Доступ', 8, 9, 1, '/role_form.php', '', '', 0, 0, '', '2011-11-21 15:32:01', '', '2011-12-23 00:00:00'),
     (17, 1, 'ajax_details.php', 'ajax_details.php', 16, 17, 0, '/ajax_details.php', '', '', 0, 0, '', '2011-12-06 03:01:44', '', '2013-06-18 00:00:00'),
-    (19, 1, 'dbsv.php', 'dbsv.php', 22, 23, 0, '/dbsv.php', '', '', 0, 0, '', '2011-12-16 15:39:30', '', '2013-06-18 00:00:00'),
     (22, 6, 'Change Password', 'Смена пароля', 10, 11, 1, '/password_form.php', '', '', 0, 0, '', '2011-12-16 17:52:33', '', '2011-12-22 00:00:00'),
     (23, 5, 'System setup', 'Системные настройки', 13, 14, 1, '/setup_form.php', '', '', 0, 0, '', '2011-12-16 17:53:15', '', '2013-06-18 00:00:00'),
     (26, 7, 'User form', 'Пользователь', 5, 6, 0, '/user_form.php', '', '', 0, 0, '', '2011-12-22 00:04:49', '', '2013-06-18 00:00:00'),
@@ -444,26 +446,24 @@ INSERT INTO `stbl_page_role` (`pgrID`, `pgrPageID`, `pgrRoleID`, `pgrFlagRead`, 
     (83, 7, 'Everyone', 0, 0, 0, 0, 0, '', NULL, '', NULL),
     (84, 8, 'Everyone', 0, 0, 0, 0, 0, '', NULL, '', NULL),
     (85, 17, 'Everyone', 1, 0, 0, 0, 0, '', NULL, '', NULL),
-    (86, 19, 'Everyone', 0, 0, 0, 0, 0, '', NULL, '', NULL),
     (87, 22, 'Everyone', 1, 0, 0, 0, 1, '', NULL, '', NULL),
     (88, 23, 'Everyone', 1, 0, 0, 0, 0, '', NULL, '', NULL),
     (89, 26, 'Everyone', 0, 0, 0, 0, 0, '', NULL, '', NULL),
-    (90, 1, 'admin', 0, 0, 0, 0, 0, '', NULL, '', NULL),
-    (92, 4, 'admin', 0, 0, 0, 0, 0, '', NULL, '', NULL),
-    (93, 5, 'admin', 0, 0, 0, 0, 0, '', NULL, '', NULL),
+    (90, 1, 'admin', 1, 0, 0, 0, 0, '', NULL, '', NULL),
+    (92, 4, 'admin', 1, 0, 0, 0, 0, '', NULL, '', NULL),
+    (93, 5, 'admin', 1, 0, 0, 0, 0, '', NULL, '', NULL),
     (94, 6, 'admin', 1, 0, 0, 0, 0, '', NULL, '', NULL),
     (95, 7, 'admin', 1, 0, 0, 0, 1, '', NULL, '', NULL),
     (96, 8, 'admin', 1, 0, 0, 0, 1, '', NULL, '', NULL),
-    (97, 17, 'admin', 0, 0, 0, 0, 0, '', NULL, '', NULL),
-    (98, 19, 'admin', 1, 0, 0, 0, 1, '', NULL, '', NULL),
-    (99, 22, 'admin', 0, 0, 0, 0, 0, '', NULL, '', NULL),
+    (97, 17, 'admin', 1, 0, 0, 0, 0, '', NULL, '', NULL),
+    (99, 22, 'admin', 1, 0, 0, 0, 0, '', NULL, '', NULL),
     (100, 23, 'admin', 1, 0, 0, 0, 1, '', NULL, '', NULL),
     (101, 26, 'admin', 1, 0, 0, 0, 1, '', NULL, '', NULL),
     (104, 29, 'admin', 1, 0, 0, 0, 0, '', NULL, '', NULL),
     (105, 29, 'Everyone', 1, 0, 0, 0, 0, '', NULL, '', NULL),
     (107, 30, 'admin', 1, 0, 0, 0, 1, '', NULL, '', NULL),
     (108, 30, 'Everyone', 1, 0, 0, 0, 0, '', NULL, '', NULL),
-    (109, 31, 'admin', 0, 0, 0, 0, 0, '', NULL, '', NULL),
+    (109, 31, 'admin', 1, 0, 0, 0, 0, '', NULL, '', NULL),
     (110, 31, 'Everyone', 1, 0, 0, 0, 0, '', NULL, '', NULL);
     ";
     
@@ -612,6 +612,7 @@ CREATE TABLE `stbl_action_log` (
     `aclEditBy` VARCHAR(255) NOT NULL DEFAULT '',
     `aclEditDate` DATETIME NULL DEFAULT NULL,
     PRIMARY KEY (`aclGUID`),
+    INDEX `IX_aclActionID` (`aclActionID`),
     INDEX `aclEntityItemID` (`aclEntityItemID`),
     INDEX `IX_oldStatusID` (`aclOldStatusID`),
     INDEX `IX_newStatusID` (`aclNewStatusID`),
@@ -822,6 +823,26 @@ ENGINE=InnoDB;";
 )
 COLLATE='utf8_general_ci'
 ENGINE=InnoDB;";
+
+$sqlTable['CREATE TABLE `stbl_message`'] = "CREATE TABLE `stbl_message` (
+  `msgID` int(10) unsigned NOT NULL AUTO_INCREMENT,
+  `msgEntityID` varchar(50) DEFAULT NULL,
+  `msgEntityItemID` varchar(50) DEFAULT NULL,
+  `msgFromUserID` varchar(50) DEFAULT NULL,
+  `msgToUserID` varchar(50) DEFAULT NULL,
+  `msgCCUserID` varchar(50) DEFAULT NULL,
+  `msgSubject` varchar(255) NOT NULL DEFAULT '',
+  `msgText` text,
+  `msgStatus` varchar(50) DEFAULT NULL,
+  `msgSendDate` datetime DEFAULT NULL,
+  `msgReadDate` datetime DEFAULT NULL,
+  `msgFlagDeleted` tinyint(4) NOT NULL DEFAULT '0',
+  `msgInsertBy` varchar(50) DEFAULT NULL,
+  `msgInsertDate` datetime DEFAULT NULL,
+  `msgEditBy` varchar(50) DEFAULT NULL,
+  `msgEditDate` datetime DEFAULT NULL,
+  PRIMARY KEY (`msgID`)
+) ENGINE=InnoDB AUTO_INCREMENT=100100 DEFAULT CHARSET=utf8;";
     
     $sqlTable['INSERT INTO `stbl_uom`'] = "
 INSERT INTO `stbl_uom` (`uomID`, `uomType`, `uomTitleLocal`, `uomTitle`, `uomRateToDefault`, `uomOrder`, `uomFlagDefault`, `uomFlagDeleted`, `uomCode1C`, `uomInsertBy`, `uomInsertDate`, `uomEditBy`, `uomEditDate`) VALUES

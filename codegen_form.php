@@ -359,7 +359,7 @@ switch ($_GET["toGen"]){
         $strCode .= "<?php\r\n".
                 "include(\"common/auth.php\");\r\n".
                 "//\$_DEBUG=true;\r\n".
-                "\$arrJS[] = commonStuffRelativePath.'eiseList/eiseList.js';\r\n".
+                "\$arrJS[] = commonStuffRelativePath.'eiseList/eiseList.jQuery.js';\r\n".
                 "\$arrCSS[] = commonStuffRelativePath.'eiseList/themes/default/screen.css';\r\n".
                 "include_once(commonStuffAbsolutePath.'eiseList/inc_eiseList.php');\r\n\r\n";
                 
@@ -403,7 +403,7 @@ switch ($_GET["toGen"]){
            
            if ($col["DataType"]=="FK"){
                if ( $col["ref_table"]!=""){
-                    $arrRefTable = $intra->getTableInfo("", $col["ref_table"]);
+                    $arrRefTable = $intra->getTableInfo($dbName, $col["ref_table"]);
                     $strCode .= "        , 'type' => \"combobox\"\r\n";
                     $strCode .= "        , 'source_prefix' => \"{$arrRefTable["prefix"]}\"\r\n";
                     $strCode .= "        , 'source' => \"{$col["ref_table"]}\"\r\n";
@@ -581,7 +581,7 @@ $strCode .= "<input type=\"hidden\" id=\"DataAction\" name=\"DataAction\" value=
                case "FK":
                   
                   if ( $col["ref_table"]!=""){
-                        $arrRefTable = $intra->getTableInfo("", $col["ref_table"]);
+                        $arrRefTable = $intra->getTableInfo($dbName, $col["ref_table"]);
                         $strCode .= "\$rs = \$intra->getDataFromCommonViews('', '', '{$col["ref_table"]}', '{$arrRefTable["prefix"]}');\r\n";
                     } else {
                         $strCode .= "\$sql = \"SELECT NULL as optValue, NULL as optText\";\r\n";

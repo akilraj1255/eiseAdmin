@@ -357,11 +357,11 @@ $rwPAG = $oSQL->fetch_array($rsPAG);
 if (isset($_GET["pagID"])){
 $arrActions[]= Array ("title" => "New item below"
 	   , "action" => "page_form.php?dbName=$dbName&pagParentID=".urlencode($_GET["pagID"])
-	   , "class"=> "new"
+	   , "class"=> "ss_arrow_down"
 	);
 $arrActions[]= Array ("title" => "New sibling"
 	   , "action" => "page_form.php?dbName=$dbName&pagParentID=".urlencode($rwPAG["pagParentID"])
-	   , "class"=> "new"
+	   , "class"=> "ss_arrow_right"
 	);
 }
 

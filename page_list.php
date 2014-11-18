@@ -44,9 +44,7 @@ switch ($DataAction){
             $oSQL->do_query($sqlUpdate);
        }
 
-       SetCookie("UserMessage", "Matrix is updated");
-
-       redirect("$PHP_SELF?dbName=$dbName&rolID=$rolID");
+       $intra->redirect("Page/role matrix is updated", $_SERVER['PHP_SELF']."?dbName=$dbName&rolID=$rolID");
 
        die();
        break;

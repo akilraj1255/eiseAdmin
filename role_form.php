@@ -13,14 +13,15 @@ $dbName = $oSQL->dbname;
 
 $DataAction = isset($_POST["DataAction"]) ? $_POST["DataAction"] : $_GET["DataAction"];
 
-$gridROL = new easyGrid($oSQL
+$gridROL = new eiseGrid($oSQL
         ,'rol'
         , Array(
-                'rowNum' =>40
-                , 'arrPermissions' => Array('FlagWrite'=>true)
+                'arrPermissions' => Array('FlagWrite'=>true)
                 , 'strTable' => 'stbl_role'
                 , 'strPrefix' => 'rol'
                 , 'flagStandAlone' => true
+                , 'controlBarButtons' => 'add|delete|save'
+                , 'extraInputs' => Array("DataAction"=>"update", 'dbName'=>$dbName)
                 )
         );
 
@@ -64,11 +65,13 @@ $gridROL->Columns[] = Array(
 switch($DataAction){
     case "update":
         
+        $oSQL->q('START TRANSACTION');
+
         $gridROL->Update();
         
         //determining newly created roles
-        for ($i=0;$i<count($_POST["rolID_id"]);$i++){
-            if ($_POST["rolID_id"]==""){
+        for ($i=1;$i<count($_POST["rolID_id"]);$i++){
+            if ($_POST["rolID_id"][$i]==''){
                 $sql[] = "INSERT INTO stbl_page_role (
                     pgrPageID
                     , pgrRoleID
@@ -80,10 +83,10 @@ switch($DataAction){
                     , pgrFlagDelete
                     ) SELECT 
                     pagID
-                    , ".$oSQL->escape_string($_POST["rolID"])." as pgrRoleID
+                    , ".$oSQL->escape_string($_POST["rolID"][$i])." as pgrRoleID
                     , 0 as pgrFlagRead
                     , 0 as pgrFlagWrite
-                    , '$usrID' AS pgrInsertBy, NOW() AS pgrInsertDate, '$usrID' AS pgrEditBy, NOW() AS pgrEditDate
+                    , '$usrID' AS pgrInsertBy, NOW() AS pgrInsertDate, '$intra->usrID' AS pgrEditBy, NOW() AS pgrEditDate
                     , 0 AS pgrFlagCreate
                     , 0 AS pgrFlagUpdate
                     , 0 AS pgrFlagDelete
@@ -93,7 +96,7 @@ switch($DataAction){
                         rlaRoleID
                         , rlaActionID
                         ) SELECT 
-                        ".$oSQL->escape_string($_POST["rolID"])." AS rlaRoleID
+                        ".$oSQL->escape_string($_POST["rolID"][$i])." AS rlaRoleID
                         , actID AS rlaActionID
                         FROM stbl_action";       
             }
@@ -127,6 +130,7 @@ switch($DataAction){
         
         for($i=0;$i<count($sql);$i++)
             $oSQL->do_query($sql[$i]);
+
         /*
         echo "<pre>";
         print_r($_POST);
@@ -134,36 +138,34 @@ switch($DataAction){
         echo "</pre>";
         die();
         //*/
-        SetCookie("UserMessage", "Data is updated");
-        header("Location: ".$_SERVER["PHP_SELF"]."?dbName=$dbName");
+
+        $oSQL->q('COMMIT');
+
+        $intra->redirect("Role information updated", $_SERVER["PHP_SELF"]."?dbName=$dbName");
         break;
     default:
         break;
 }
 
-$arrActions[]= Array ('title' => 'Add Row'
-	   , 'action' => "javascript:eiseGridAddRow('rol')"
-	   , 'class'=> 'ss_add'
-	);
 include eiseIntraAbsolutePath."inc-frame_top.php";
 ?>
 
 <h1>Roles</h1>
 
+<style type="text/css">
+th.rol_rolID {
+    padding-right: 10px;
+    text-align: right;
+}
+</style>
+
 <script>
 $(document).ready(function(){  
 	$('.eiseGrid').eiseGrid();
 });
-
-function eiseGridAddRow(){
-    $('#rol').eiseGrid('addRow');
-}
 </script>
 
 
-<form action="<?php  echo $_SERVER["PHP_SELF"] ; ?>" method="POST">
-<input type="hidden" name="DataAction" value="update" />
-<input type="hidden" name="dbName" value="<?php  echo $dbName ; ?>" />
 <?php 
 $sqlROL = "SELECT ROL.*
 , GROUP_CONCAT(rluUserID SEPARATOR ', ') as rolMembers
@@ -178,10 +180,6 @@ while ($rwROL = $oSQL->fetch_array($rsROL)){
 
 $gridROL->Execute();
 ?>
-<div align="center">
-<input type="submit" value="Save" onclick="easyGridVerify('rol');">
-</div>
-</form>
 
 <?php
 include eiseIntraAbsolutePath."inc-frame_bottom.php";

@@ -1,38 +1,25 @@
 <?php 
-include "common/auth.php";
+include ("../common/eiseIntra/inc_intra.php");
+include ("./common/config.php");
 include eiseIntraAbsolutePath."inc_dbsv.php";
 
-$dbsvPath = (isset($dbsvPath) ? $dbsvPath : "./.SQL");
+$dbsvPath = "./.SQL";
 
-set_time_limit(600);
-
-$n = ob_get_level();
-for ($i=0; $i<$n; $i++) {ob_end_flush();}
-ob_implicit_flush(1);
-
-echo str_repeat(" ", 256);
-ob_flush();
-
-?><!DOCTYPE html>
-<html><head>
-<title>DBSV SQL script application</title>
-</head>
-<body>
-<pre>
-/**************************************************************************/
-/* PHP DBSV for MySQL                                                     */
-/* (c)2008-2012 Ilya S. Eliseev                                           */ 
-/**************************************************************************/
-<?php 
-if (!$intra->arrUsrData["FlagWrite"]) {
-    echo "Permission denied for user {$usrID}";
-    die();
+try {
+	$dbsv = new eiseDBSV(array('DBNAME'=> $DBNAME
+		, 'dbsvPath'=>$dbsvPath
+		, 'authstring' => $_POST['authstring'])
+	);
+} catch(Exception $e){
+	echo '<pre>';
+	echo $e->getMessage();
+	die();
 }
 
-$dbsv = new eiseDBSV($oSQL, $dbsvPath);
+if ( !$dbsv->authorized ){
+	$dbsv->form();
+}
 
 $dbsv->Execute();
- ?>
-</pre>
-</body>
-</html>
+
+?>
