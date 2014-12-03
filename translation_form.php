@@ -6,9 +6,9 @@ $dbName = $_GET["dbName"] ? $_GET["dbName"] : $_POST["dbName"];
 $oSQL->dbname = $dbName;
 $oSQL->select_db($dbName);
 
-include commonStuffAbsolutePath.'eiseGrid/inc_eiseGrid.php';
-$arrJS[] = commonStuffRelativePath.'eiseGrid/eiseGrid.js';
-$arrCSS[] = commonStuffRelativePath.'eiseGrid/eiseGrid.css';
+include commonStuffAbsolutePath.'eiseGrid2/inc_eiseGrid.php';
+$arrJS[] = commonStuffRelativePath.'eiseGrid2/eiseGrid.jQuery.js';
+$arrCSS[] = commonStuffRelativePath.'eiseGrid2/themes/default/screen.css';
 
 $gridSTR = new easyGrid($oSQL
         ,'str'
@@ -71,7 +71,7 @@ include eiseIntraAbsolutePath."inc-frame_top.php";
 ?>
 <script>
 $(document).ready(function(){  
-	easyGridInitialize();
+    $('.eiseGrid').eiseGrid();
 });
 </script>
 <h1>Translation table</h1>
