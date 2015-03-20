@@ -83,7 +83,8 @@ if ($_GET["show"]=="code"){
     $strCode = "\$intra->lang = Array(\r\n";
     $strArrayCode = "";
     while ($rwSTR = $oSQL->fetch_array($rsSTR)){
-        $strArrayCode .= ($strArrayCode != "" ? "\r\n, " : "")."\"".addslashes($rwSTR["strKey"])."\" => \"".addslashes($rwSTR["strValue"])."\"";
+        if($rwSTR["strValue"])
+            $strArrayCode .= ($strArrayCode != "" ? "\r\n, " : "")."\"".addslashes($rwSTR["strKey"])."\" => \"".addslashes($rwSTR["strValue"])."\"";
     }
     $strCode .= $strArrayCode."\r\n";
     $strCode .= ");";

@@ -112,8 +112,8 @@ function getUpdateCode($toGen, $arrTable, $indent=""){
 }
 
 
-$arrActions[]= Array ("title" => "Table"
-	   , "action" => "table_form.php?dbName=$dbName&tblName=$tblName"
+$arrActions[]= Array ("title" => ($_GET["toGen"]=="EntTables" ? "Entity" : "Table")
+	   , "action" => "".($_GET["toGen"]=="EntTables" ? "entity_form.php?dbName=$dbName&entID=".$_GET['entID'] : "table_form.php?dbName=$dbName&tblName=$tblName")
 	   , "class"=> "ss_arrow_left"
 	);
 
@@ -181,157 +181,7 @@ switch ($_GET["toGen"]){
         include commonStuffAbsolutePath.'eiseGrid2/inc_eiseGrid_codegen.php';
         $strCode = eiseGrid_codegen::code(array('tableName'=>$tblName, 'arrTable'=>$arrTable));
         break;
-
-    case "phpList":
-        
-        /*
-        echo"<pre>";
-        print_r($arrTable);
-        echo"</pre>";
-        //*/
-        
-        $strCode = "";
-        
-        $strCode .= "<?php\r\n".
-                "include(\"common/auth.php\");\r\n".
-                "//\$_DEBUG=true;\r\n".
-                "include(\"../common/phpList/inc_phpList.php\");\r\n\r\n".
-                "\$listName = \$listName ? \$listName : \"".$arrTable['prefix']."\";\r\n".
-                "\$lst = new phpLister(\$listName);\r\n\r\n";
-        
-        $strCode .= "\$lst->Columns[] = array('title' => \"\"\r\n".
-                "        , 'field' => '".implode("_", $arrTable['PK'])."'\r\n".
-                (count($arrTable['PK']) > 1 ? 
-                "        , 'sql' => \"CONCAT(".implode(", '_', ", $arrTable["PK"]).")\"\r\n" : "").        
-                "        , 'PK' => true\r\n".
-                "        );\r\n\r\n";
-        
-        $strCode .= "\$lst->Columns[] = array('title' => \"##\"\r\n".
-                "        , 'field' => \"phpLNums\"\r\n".
-                "        , 'type' => \"num\"\r\n".
-                "        );\r\n\r\n";
-                
-        for($i=0;$i<count($arrTable['columns']);$i++){
-           $col = $arrTable['columns'][$i];
-           if ($col["DataType"]=="binary")
-               continue;
-           if ($col["DataType"]=="activity_stamp")
-               continue;
-           
-           $field = $col["Field"];
-           $sql = $col["Field"];
-           
-           if ($col["DataType"]=="PK"){
-              $field = $field."_";
-           }
-           
-           $strCode .= "\$lst->Columns[] = array('title' => \$intra->translate(\"".($col["Comment"]!="" ? $col["Comment"] : $col["Field"])."\")\r\n";
-           
-           if ($col["DataType"]=="FK"){
-               if ( $col["ref_table"]!=""){
-                    $arrRefTable = $intra->getTableInfo("", $col["ref_table"]);
-                    $strCode .= "        , 'type' => \"combobox\"\r\n";
-                    $strCode .= "        , 'source_prefix' => \"{$arrRefTable["prefix"]}\"\r\n";
-                    $strCode .= "        , 'source' => \"{$col["ref_table"]}\"\r\n";
-                    $strCode .= "        , 'defaultText' => getTranslation(\"Any\")\r\n";
-                    $strCode .= "        , 'field' => \"{$col["Field"]}\"\r\n";
-                    $strCode .= "        , 'filter' => \"{$col["Field"]}\"\r\n";
-                    $strCode .= "        , 'order_field' => \"{$col["Field"]}_Text\"\r\n";
-                    $strCode .= "        );\r\n";
-                    continue;
-               } else {
-                    $strType="text";
-               }
-           }
-           
-           switch ($col["DataType"]){
-               case "datetime":
-                  $strType = "date";
-                  break;
-               case "real":
-                  $strType = "money";
-                  break;
-               case "integer":
-                  $strType = "numeric";
-                  break;
-               case "boolean":
-                    $strType = "boolean";
-                    break;
-               case "FK":
-                  $strType = ($col["ref_table"]!="" ? "combobox" : "text");
-                  break;
-               default:
-                  $strType = "text";
-                  break;
-           }
-           
-           $strCode .= "        , 'type'=>\"$strType\"\r\n";
-           
-           $strCode .= "        , 'field' => \"".$field."\"\r\n";
-           $strCode .= ($field != $sql
-                     ?  "        , 'sql' => \"".$sql."\"\r\n"
-                     : ""
-                    );
-           
-           $strCode .= "        , 'filter' => \"".$sql."\"\r\n";
-           $strCode .= "        , 'order_field' => \"".$field."\"\r\n";
-           
-           
-           
-           if(preg_match("/Title$/i", $field))
-              $strCode .= "        , 'width' => \"100%\"\r\n";
-           $strCode .= "        );\r\n";
-           
-        }
-        
-        if ($arrTable["hasActivityStamp"]){
-            //put changed date here
-           $strEditByField = $arrTable["prefix"]."EditDate";
-           
-           $strCode .= "\$lst->Columns[] = array('title' => \"Updated\"\r\n";
-           $strCode .= "        , 'type'=>\"date\"\r\n";
-           
-           $strCode .= "        , 'field' => \"".$strEditByField."\"\r\n";
-           $strCode .= "        , 'filter' => \"".$strEditByField."\"\r\n";
-           $strCode .= "        , 'order_field' => \"".$strEditByField."\"\r\n";
-           $strCode .= "        );\r\n";
-        }
-        
-        $strCode .= "\r\n";
-        
-        $strCode .= "\$sqlFrom = \"$tblName\";\r\n\r\n";
-        
-        $strCode .= "if (\$_GET['phpLExcel']){\r\n";
-        $strCode .= "   \$lst->Execute (\$oSQL, \$sqlFrom, \$sqlWhere, \"".
-        ($strEditByField ? $strEditByField : $arrTable["PK"][0])
-        ."\", \"".($strEditByField ? "DESC" : "ASC")."\", 0, true);\r\n";
-        $strCode .= "   die();\r\n";
-        $strCode .= "}\r\n\r\n";
-        
-        $strCode .= "if (\$intra->arrUsrData['FlagWrite']){\r\n";
-        $strCode .= "    \$arrActions[]= Array ('title' => getTranslation(\"New\")\r\n";
-        $strCode .= "       , 'action' => \"".(str_replace("tbl_", "", $tblName))."_form.php\"\r\n";
-        $strCode .= "       , 'class' => \"ss_add\"\r\n";
-        $strCode .= "    );\r\n";
-        $strCode .= "}\r\n\r\n";
-        
-        $strCode .= "\$arrJS[] = \"../common/phpList/phpList.js\";\r\n";
-        $strCode .= "include(\"../common/inc-frame_top.php\");\r\n";
-        $strCode .= "?>\r\n\r\n";
-        
-        $strCode .= "<h1><?php echo \$intra->arrUsrData[\"pagTitle{\$intra->local}\"]; ?></h1>\r\n\r\n";
-        
-        $strCode .= "<?php\r\n\r\n";
-        
-        
-        $strCode .= "\$lst->Execute (\$oSQL, \$sqlFrom, \$sqlWhere, \"".
-        ($strEditByField ? $strEditByField : $arrTable["PK"][0])
-        ."\", \"".($strEditByField ? "DESC" : "ASC")."\");\r\n\r\n";
-        $strCode .= "include(\"../common/inc-frame_bottom.php\");\r\n";
-        $strCode .= "?>";
-        
-        
-        break;      
+      
     case "eiseList":
         
         /*
@@ -716,16 +566,16 @@ CREATE TABLE `{$rwEnt["entTable"]}_number` (
                 $strCodeLog .= ($strCodeLog != "" ? "\r\n, " : "")."\tADD COLUMN l{$colName} ";
                 switch($rwMsf["atrType"]){
                     case "date":
-                        $strType = "DATE";
+                        $strType = "DATE NULL DEFAULT NULL";
                         break;
                     case "datetime":
-                        $strType = "DATETIME";
+                        $strType = "DATETIME NULL DEFAULT NULL";
                         break;
                     case "numeric":
-                        $strType = "DOUBLE";
+                        $strType = "DOUBLE NULL DEFAULT NULL";
                         break;
                     case "integer":
-                        $strType = "INT";
+                        $strType = "INT NULL DEFAULT NULL";
                         break;
                     case "money":
                         $strType = "DECIMAL(10,2)";
@@ -772,82 +622,180 @@ CREATE TABLE `{$rwEnt["entTable"]}_number` (
         
         break;
     case "EntTables":
+
         $entID = $_GET["entID"];
         $rwEnt = $oSQL->fetch_array($oSQL->do_query("SELECT * FROM stbl_entity WHERE entID='$entID'"));
         $strTBL = $rwEnt["entTable"];
         $strLTBL = $rwEnt["entTable"]."_log";
-        
-        $strCode = "DROP TABLE IF EXISTS `{$strTBL}`;\r\n";;
-        
+
+        $arrMasterTable = array();
+        $arrLogTable = array();
+        try { $arrMasterTable = $intra->getTableInfo($dbName, $strTBL); } catch (Exception $e) {$arrMasterTable['columns'] = array();}
+        try { $arrLogTable = $intra->getTableInfo($dbName, $strLTBL); } catch (Exception $e) { $arrLogTable['columns'] = array();}
+
+        //determine last column name from master
+        $ak = array_keys($arrMasterTable['columns']);
+        $ii = 0;
+        foreach($arrMasterTable['columns'] as $col=>$x){
+            $lastMasterColName = $col;
+            if( in_array($ak[$ii+1], array("{$entID}FlagDeleted", "{$entID}InsertDate")) ){
+                break;
+            } 
+            $ii++;
+        }
+
+        //determine last column name from log
+        $ak = array_keys($arrLogTable['columns']);
+        $ii = 0;
+        foreach($arrLogTable['columns'] as $col=>$x){
+            $lastLogColName = $col;
+
+            if( in_array($ak[$ii+1], array("l{$entID}FlagDeleted", "l{$entID}InsertDate")) ){
+                break;
+            } 
+            $ii++;
+
+        }
+
         //collect attributes
-        $strFields = "";
         $strFieldsMaster = "";
-        $arrATR = Array();
-        $arrFields = Array();
+        $strLogFields = "";
         $sqlATR = "SELECT * FROM stbl_attribute WHERE atrEntityID='{$entID}' ORDER BY atrOrder";
         $rsATR = $oSQL->do_query($sqlATR);
         while ($rwATR = $oSQL->fetch_array($rsATR)) {
+
+            $strKeyMaster = $strKeyLog = '';
             switch ($rwATR["atrType"]){
                 case "boolean":
-                    $strType = "INT";
+                    $strType = "TINYINT(4) NOT NULL DEFAULT 0";
+                    break;
+                case "integer":
+                    $strType = "INT NULL DEFAULT NULL";
                     break;
                 case "numeric":
-                    $strType = "DECIMAL";    
+                case "real":
+                    $strType = "DECIMAL(10,2) NULL DEFAULT NULL";    
                     break;
                 case "date":
                 case "datetime":
-                    $strType = $rwATR["atrType"];
+                    $strType = $rwATR["atrType"].' NULL DEFAULT NULL';
                     break;
                 case "text":
                 case "textarea":
-                    $strType = "LONGTEXT";
+                    $strType = "LONGTEXT NULL";
                     break;
                 case "combobox":
                 case "ajax_dropdown":
-                    $strKeysMaster .= "\r\n, KEY `IX_".$rwATR["atrID"]."` (`".$rwATR["atrID"]."`)";
-                    $strKeys .= "\r\n, KEY `IX_l".$rwATR["atrID"]."` (`l".$rwATR["atrID"]."`)";
-                    $strType = "VARCHAR(36)";
+                    $strKeyMaster = "`IX_".$rwATR["atrID"]."` (`".$rwATR["atrID"]."`)";
+                    $strKeyLog = "`IX_l".$rwATR["atrID"]."` (`l".$rwATR["atrID"]."`)";
+                    $strType = "VARCHAR(36) NULL DEFAULT NULL";
                     break;
                 case "varchar":
                 default:                    
-                    $strType = "VARCHAR(1024)";
+                    $strType = "VARCHAR(1024) NOT NULL DEFAULT ''";
                     break;
             }
-            $strFieldsMaster .= "\r\n, `{$rwATR["atrID"]}` {$strType} DEFAULT NULL COMMENT ".$oSQL->escape_string($rwATR["atrTitle"]);
-            $strFields .= "\r\n, `l{$rwATR["atrID"]}` {$strType} DEFAULT NULL COMMENT ".$oSQL->escape_string($rwATR["atrTitle"]);
-         }
-        //create master table
-        $strCode .= "\r\nCREATE TABLE `{$strTBL}` (
-              `{$entID}ID` VARCHAR(36) NOT NULL
-               ,`{$entID}StatusID` INT(11) NOT NULL DEFAULT '0'
-               ,`{$entID}ActionLogID` VARCHAR(36) NULL DEFAULT NULL
-               ,`{$entID}StatusActionLogID` VARCHAR(36) NULL DEFAULT NULL
-               ,`{$entID}StatusLogID` VARCHAR(36) NULL DEFAULT NULL
-              {$strFieldsMaster}
-              , `{$entID}InsertBy` varchar(50) DEFAULT NULL
-              , `{$entID}InsertDate` datetime DEFAULT NULL
-              , `{$entID}EditBy` varchar(50) DEFAULT NULL
-              , `{$entID}EditDate` datetime DEFAULT NULL
-              , PRIMARY KEY (`{$rwEnt["entID"]}ID`)
-              , INDEX `IX_{$entID}StatusID` (`{$entID}StatusID`)
-              , INDEX `IX_{$entID}ActionLogID` (`{$entID}ActionLogID`)
-              , INDEX `IX_{$entID}StatusLogID` (`{$entID}StatusLogID`)
-              ".($strKeysMaster!="" ? $strKeysMaster : "")."
-            ) ENGINE=InnoDB AUTO_INCREMENT=0 DEFAULT CHARSET=utf8;\r\n";
+
+            if(!@array_key_exists($rwATR['atrID'], $arrMasterTable['columns'])){
+                if(count($arrMasterTable['columns'])>0){
+                    $strFieldsMaster .= "\r\n\t, ADD COLUMN `{$rwATR["atrID"]}` {$strType} COMMENT ".$oSQL->escape_string($rwATR["atrTitle"])." AFTER `{$lastMasterColName}`" ;
+                    $strKeysMaster .= ($strKeyMaster!='' ? "\r\n\t, ADD INDEX {$strKeyMaster}" : '');
+                    $lastMasterColName = $rwATR['atrID'];
+                } else {
+                    $strFieldsMaster .= "\r\n\t, `{$rwATR["atrID"]}` {$strType} COMMENT ".$oSQL->escape_string($rwATR["atrTitle"]);
+                    $strKeysMaster .= ($strKeyMaster!='' ? "\r\n\t, KEY {$strKeyMaster}" : '');
+                }
+            } 
+
+            if(!@array_key_exists('l'.$rwATR['atrID'], $arrLogTable['columns'])) {
+                if(count($arrLogTable['columns'])>0){
+                    $strFieldsLog .= "\r\n\t, ADD COLUMN `l{$rwATR["atrID"]}` {$strType} COMMENT ".$oSQL->escape_string($rwATR["atrTitle"])." AFTER `{$lastLogColName}`";
+                    $strKeysLog .= ($strKeyLog ? "\r\n\t, ADD INDEX {$strKeyLog}" : '');
+                    $lastLogColName = 'l'.$rwATR['atrID'];
+                } else {
+                    $strFieldsLog .= "\r\n\t, `l{$rwATR["atrID"]}` {$strType} COMMENT ".$oSQL->escape_string($rwATR["atrTitle"]);
+                    $strKeysLog .= ($strKeyLog ? "\r\n\t, KEY {$strKeyLog}" : '');
+                }
+            }
+            
+        }
+
+        if(count($arrMasterTable['columns'])==0){
+            $strCode = "DROP TABLE IF EXISTS `{$strTBL}`;\r\n";
+            //create master table
+           $strCode .= "\r\nCREATE TABLE `{$strTBL}` (".
+                "\r\n\t`{$entID}ID` VARCHAR(36) NOT NULL".
+                "\r\n\t,`{$entID}StatusID` INT(11) NOT NULL DEFAULT '0'".
+                "\r\n\t,`{$entID}ActionLogID` VARCHAR(36) NULL DEFAULT NULL".
+                "\r\n\t,`{$entID}StatusActionLogID` VARCHAR(36) NULL DEFAULT NULL".
+                "\r\n\t,`{$entID}StatusLogID` VARCHAR(36) NULL DEFAULT NULL".
+                "{$strFieldsMaster}".
+                "\r\n\t, `{$entID}FlagDeleted` tinyint(4) DEFAULT 0".
+                "\r\n\t, `{$entID}InsertBy` varchar(50) DEFAULT NULL".
+                "\r\n\t, `{$entID}InsertDate` datetime DEFAULT NULL".
+                "\r\n\t, `{$entID}EditBy` varchar(50) DEFAULT NULL".
+                "\r\n\t, `{$entID}EditDate` datetime DEFAULT NULL".
+                "\r\n\t, PRIMARY KEY (`{$rwEnt["entID"]}ID`)".
+                "\r\n\t, INDEX `IX_{$entID}StatusID` (`{$entID}StatusID`)".
+                "\r\n\t, INDEX `IX_{$entID}ActionLogID` (`{$entID}ActionLogID`)".
+                "\r\n\t, INDEX `IX_{$entID}StatusLogID` (`{$entID}StatusLogID`)".
+                "\r\n\t".($strKeysMaster!="" ? $strKeysMaster : "").
+                "\r\n) ENGINE=InnoDB AUTO_INCREMENT=0 DEFAULT CHARSET=utf8;\r\n";
+        } else {
+            $strCode = "ALTER TABLE {$strTBL}";
+            $strAlterBody = '';
+            $strIndexes = '';
+            $strLastColumn = $arrMasterTable['PK'][count($arrMasterTable['PK'])-1];
+            if(!array_key_exists("{$entID}StatusID", $arrMasterTable['columns'])){
+                $strAlterBody .= "\r\n\t".($strAlterBody!='' ? ', ' : '')."ADD COLUMN `{$entID}StatusID` INT(11) NOT NULL DEFAULT '0' AFTER {$strLastColumn}";
+                $strIndexes .= "\r\n\t, ADD INDEX `IX_{$entID}StatusID` (`{$entID}StatusID`)";
+                $strLastColumn = "{$entID}StatusID";
+            }
+            if(!array_key_exists("{$entID}ActionLogID", $arrMasterTable['columns'])){
+                $strAlterBody .= "\r\n\t".($strAlterBody!='' ? ', ' : '')."ADD COLUMN `{$entID}ActionLogID` VARCHAR(36) NULL DEFAULT NULL AFTER {$strLastColumn}";
+                $strIndexes .= "\r\n\t, ADD INDEX `IX_{$entID}ActionLogID` (`{$entID}ActionLogID`)";
+                $strLastColumn = "{$entID}ActionLogID";
+            }
+            if(!array_key_exists("{$entID}StatusActionLogID", $arrMasterTable['columns'])){
+                $strAlterBody .= "\r\n\t".($strAlterBody!='' ? ', ' : '')."ADD COLUMN `{$entID}StatusActionLogID` VARCHAR(36) NULL DEFAULT NULL AFTER {$strLastColumn}";
+                $strIndexes .= "\r\n\t, ADD INDEX `IX_{$entID}StatusActionLogID` (`{$entID}StatusActionLogID`)";
+                $strLastColumn = "{$entID}StatusActionLogID";
+            }
+            if(!array_key_exists("{$entID}StatusLogID", $arrMasterTable['columns'])){
+                $strAlterBody .= "\r\n\t".($strAlterBody!='' ? ', ' : '')."ADD COLUMN `{$entID}StatusLogID` VARCHAR(36) NULL DEFAULT NULL AFTER {$strLastColumn}";
+                $strIndexes .= "\r\n\t, ADD INDEX `IX_{$entID}StatusLogID` (`{$entID}StatusLogID`)";
+                $strLastColumn = "{$entID}StatusLogID";
+            }
+            $strCode .= $strAlterBody;
+            $strCode .= ($strAlterBody=='' ? "\r\n\t".preg_replace('/^(\s*,\s*)/', '' , $strFieldsMaster) : $strFieldsMaster);
+            $strCode .= $strIndexes.$strKeysMaster;
+            $strCode .= ";\r\n\r\n";
+        }
         
-        //create log table
-        $strCode .= "\r\nDROP TABLE IF EXISTS `{$strLTBL}`;";
-        $strCode .= "\r\nCREATE TABLE `{$strLTBL}` (
-              `l{$entID}GUID` VARCHAR(36) NOT NULL
-              , `l{$entID}ID` VARCHAR(36) NOT NULL
-              {$strFields}
-              , `l{$entID}InsertBy` varchar(50) DEFAULT NULL
-              , `l{$entID}InsertDate` datetime DEFAULT NULL
-              , `l{$entID}EditBy` varchar(50) DEFAULT NULL
-              , `l{$entID}EditDate` datetime DEFAULT NULL
-              , PRIMARY KEY (`l{$rwEnt["entID"]}GUID`)
-              ".($strKeys!="" ? $strKeys : "")."
-            ) ENGINE=InnoDB AUTO_INCREMENT=0 DEFAULT CHARSET=utf8;\r\n";
+        if(count($arrLogTable['columns'])==0){
+            //create log table
+            $strCode .= "\r\nDROP TABLE IF EXISTS `{$strLTBL}`;";
+            $strCode .= "\r\nCREATE TABLE `{$strLTBL}` (".
+                  "\r\n\t`l{$entID}GUID` VARCHAR(36) NOT NULL".
+                  "\r\n\t, `l{$entID}ID` VARCHAR(36) NOT NULL".
+                  "{$strFieldsLog}".
+                  "\r\n\t, `l{$entID}InsertBy` varchar(50) DEFAULT NULL".
+                  "\r\n\t, `l{$entID}InsertDate` datetime DEFAULT NULL".
+                  "\r\n\t, `l{$entID}EditBy` varchar(50) DEFAULT NULL".
+                  "\r\n\t, `l{$entID}EditDate` datetime DEFAULT NULL".
+                  "\r\n\t, PRIMARY KEY (`l{$rwEnt["entID"]}GUID`)".
+                  ($strKeys!="" ? $strKeys : "").
+                "\r\n) ENGINE=InnoDB AUTO_INCREMENT=0 DEFAULT CHARSET=utf8;\r\n";
+        } else {
+            if($strFieldsLog){
+                $strCode .= ($strCode!='' ? "\r\n\r\n" : '')."ALTER TABLE {$strLTBL}";
+                $strCode .= "\r\n\t".preg_replace('/^(\s*,\s*)/', '' , $strFieldsLog).$strKeysLog.';';    
+            }
+        }
+
+        
+        $strCode = str_replace("\t", CODE_INDENT, $strCode);
+
             
         break;
     case "ATV2MT":

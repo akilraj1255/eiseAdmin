@@ -191,6 +191,8 @@ include eiseIntraAbsolutePath."inc-frame_top.php";
 <?php 
 if ($arrFlags["hasEntity"]){
 
+    $oSQL->q('SET SESSION group_concat_max_len = 1000000');
+
     foreach($arrEntityTables as $tableName){
         if (!in_array($tableName, $arrTables))
           continue;

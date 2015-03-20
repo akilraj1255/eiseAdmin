@@ -1,14 +1,15 @@
 <?php
 include 'common/auth.php';
 
-$dbName = (isset($_POST["dbName"]) ? $_POST["dbName"] : $_GET["dbName"]);
-$oSQL->select_db($dbName);
-
 $DataAction  = (isset($_POST['DataAction']) ? $_POST['DataAction'] : $_GET['DataAction'] );
 
-include commonStuffAbsolutePath.'eiseGrid/inc_eiseGrid.php';
-$arrJS[] = commonStuffRelativePath.'eiseGrid/eiseGrid.js';
-$arrCSS[] = commonStuffRelativePath.'eiseGrid/eiseGrid.css';
+include commonStuffAbsolutePath.'eiseGrid2/inc_eiseGrid.php';
+$arrJS[] = commonStuffRelativePath.'eiseGrid2/eiseGrid.jQuery.js';
+$arrCSS[] = commonStuffRelativePath.'eiseGrid2/themes/default/screen.css';
+
+$oSQL->dbname=(isset($_POST["dbName"]) ? $_POST["dbName"] : $_GET["dbName"]);
+$oSQL->select_db($oSQL->dbname);
+$dbName = $oSQL->dbname;
 
 $gridENT = new easyGrid($oSQL
         ,'ent'
@@ -104,7 +105,7 @@ switch($DataAction){
 
 
 $arrActions[]= Array ('title' => 'Add Row'
-	   , 'action' => "javascript:easyGridAddRow('ent')"
+	   , 'action' => "#add"
 	   , 'class'=> 'ss_add'
 	);
     
@@ -112,7 +113,10 @@ include eiseIntraAbsolutePath."inc-frame_top.php";
 ?>
 <script>
 $(document).ready(function(){  
-	easyGridInitialize();
+	$('.eiseGrid').eiseGrid();
+    $('a[href=#add]').click(function(){
+        $('#ent').eiseGrid('addRow');
+    })
 });
 </script>
 
