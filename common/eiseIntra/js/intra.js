@@ -19,6 +19,31 @@ var convertDateForDateInput = function($eiForm, inp){
 
 }
 
+var getInput = function($form, strFieldName){
+
+    return $form.find('#'+strFieldName);
+
+}
+
+var getInputType = function($inp){
+    var strType = ($inp.attr('type') ? $inp.attr('type') : 'text');
+    if(strType=='text'){
+        var classList =$inp.attr('class').split(/\s+/);
+        $.each( classList, function(index, item){
+            if (item.match(/^eiseIntra_/)) {
+                switch(item){
+                    case 'eiseIntra_date':
+                    case 'eiseIntra_datetime':
+                        return item.replace('eiseIntra_', '');
+                    default:
+                        break;
+                }
+            }
+        });
+    }
+    return strType;
+}
+
 var setCurrentDate = function(oInp){
     
     var today = new Date();
@@ -61,7 +86,8 @@ init: function( options ) {
 
             var conf = $.parseJSON($('#eiseIntraConf').val());
 
-            conf.isDateInputSupported = isDateInputSupported();
+            //conf.isDateInputSupported = isDateInputSupported();
+            conf.isDateInputSupported = false;
 
             conf.strRegExDate = conf.dateFormat
                         .replace(new RegExp('\\.', "g"), "\\.")
@@ -128,6 +154,7 @@ init: function( options ) {
         });
     
         $this.find('input.eiseIntra_date, input.eiseIntra_datetime').each(function() {
+            $(this).attr('autocomplete', 'off');
             $(this).datepicker({
                     changeMonth: true,
                     changeYear: true,
@@ -143,6 +170,8 @@ init: function( options ) {
         });
     
         $this.find('input.eiseIntra_ajax_dropdown').each(function(){
+
+            $(this).attr('autocomplete', 'off');
             
             var data = $(this).attr('src');
     		eval ("var arrData="+data+";");
@@ -238,7 +267,7 @@ validate: function( ) {
     $(this).find('input.eiseIntraValue,select.eiseIntraValue').each(function() {
         
         var strValue = $(this).val();
-        var strType = $(this).attr('type');
+        var strType = getInputType($(this));
         
         var strRegExDateToUse = '';
 
@@ -298,22 +327,25 @@ validate: function( ) {
 },
 
 makeMandatory: function( obj ) {  
-    
+
     return this.each(function(){
     
-    $(this).find('input.eiseIntraValue').each(function(){
+    $(this).find('input,select,textarea').each(function(){
         if ($(this).attr('type')=='hidden')
             return true; // continue
         
         var label = getFieldLabel($(this));
-        label.text(label.text().replace(/\*\:$/, ":"));
-        $(this).removeAttr('required');
+        if(label[0]){
+            label.text(label.text().replace(/\*\:$/, ":"));
+            $(this).removeAttr('required');    
+        }
+        
     });
     
-    if ( obj.strIDs==='')
+    if ( obj.strMandatorySelector=='')
         return;
     
-    $(this).find( obj.strIDs ).each(function(){
+    $(this).find( obj.strMandatorySelector ).each(function(){
         
        var label = getFieldLabel($(this));
        label.text(label.text().replace(/\:$/, "*:"));
@@ -324,6 +356,24 @@ makeMandatory: function( obj ) {
     
     })
     
+},
+
+focus: function(strFieldName, onFocus ){
+
+    var $field = getInput(this, strFieldName);
+
+    if(typeof($field[0])=='undefined')
+        $field = this.find('input[type!=hidden],select').first();
+
+    if(typeof(onFocus)!='undefined')
+        $field.focus( onFocus );
+    else {
+
+        $field.select();
+        $field.focus();
+
+    }
+
 },
 
 value: function(strFieldName, strType, val, decimalPlaces){
@@ -396,22 +446,48 @@ value: function(strFieldName, strType, val, decimalPlaces){
     }
 },
 
-fill: function(data){
+fill: function(data, options){
     
     return this.each(function(){
     
         var $form = $(this);
 
-        $.each(data, function(field, fData){
+        $.each(data, function(field, fieldData){
+
+            if( typeof(fieldData)=='object' && typeof(fieldData.v)=='undefined' )
+                return true; // skip objects without data
+
+            var fData = (typeof(fieldData)=='object' && typeof(fieldData.v)!='undefined' 
+                ? fieldData
+                : {v: fieldData});
+
             var $inp = $form.find('#'+field);
-            if (!$inp[0])
-                return true; // continue
+            if (!$inp[0]){
+                if(options && options.createMissingAsHidden){
+                    $inp = $('<input type="hidden">').attr('id', field).attr('name', field).appendTo($form);
+                } else 
+                    return true; // continue
+            }
 
             switch($inp[0].nodeName){
                 case 'INPUT':
                 case 'SELECT':
-                    $inp.val(fData.v);
+                    switch($inp.attr('type')){
+                        case 'checkbox':
+                            if(parseInt(fData.v)==1)
+                                $inp[0].checked = true;
+                            else 
+                                $inp[0].checked = false;
+                            break;
+                        case 'radio':
+                            // not delivered yet
+                            break;
+                        default:
+                            $inp.val(fData.v);
+                    } 
+                    
                     $inpNext = $inp.next('input#'+field+'_text');
+
                     if ($inpNext && fData.t){
                         $inpNext.val(fData.t);
                     }
@@ -492,8 +568,11 @@ change: function(strInputIDs, callback){
 },
 
 conf: function(varName, value){
+
+    if (typeof(varName)=='undefined')
+        return $(this[0]).data('eiseIntraForm').conf;
     
-    if (value==undefined){
+    if (typeof(value)=='undefined'){
         return $(this[0]).data('eiseIntraForm').conf[varName];
     } else {
         $(this).each(function(){
@@ -534,6 +613,125 @@ encodeAuthString: function(){
     authinput.val(authstr);
 
     return authstr;
+
+},
+
+createDialog: function( conf ){
+
+    if(!conf.fields)
+        return null;
+
+    var $frm = $('<form/>').appendTo('body').addClass('eiseIntraForm');
+
+    if(conf.action)
+        $frm.attr('action', conf.action);
+
+    if(conf.method)
+        $frm.attr('method', conf.method);
+
+    $frm.append('<span class="ui-helper-hidden-accessible"><input type="text"></span>');
+
+    $.each(conf.fields, function(ix, field){
+
+        $frm.eiseIntraForm('addField', field );
+
+    });
+
+    $frm.append('<div class="eif_actionButtons">'
+        +'<input type="submit" value="OK" class="eiseIntraSubmit">'
+        +'<input type="button" value="Cancel" class="eif_btnClose">'
+        +'</div>');
+
+    $frm.eiseIntraForm('init').submit(function(){
+
+        var objVals = {};
+        $frm.find('input,select,textarea').each(function(ix, inp){
+            if($(inp).attr('name')){
+                objVals[$(inp).attr('name')] = {v: ($(inp).attr('type')=='checkbox' 
+                    ? (inp.checked ? 1 : 0)
+                    : $(inp).val())
+                };
+                if(inp.nodeName.toUpperCase()=='SELECT'){
+                    objVals[$(inp).attr('name')]['t'] = inp.options[inp.options.selectedIndex].text;
+                } 
+                if(typeof($frm.find('#'+$(inp).attr('name')+'_text')[0])!='undefined'){
+                    objVals[$(inp).attr('name')]['t'] = $frm.find('#'+$(inp).attr('name')+'_text').val();
+                }
+            }
+                
+        })
+
+        if(conf.onsubmit)
+            return conf.onsubmit(objVals);
+
+        $frm.dialog('close').remove();
+
+    });
+
+    $frm.dialog({
+        modal: true
+        , title: conf.title
+        , resize: "auto"
+    });
+
+    $frm.find('.eif_btnClose').click(function(){ $frm.dialog('close').remove(); })
+
+    return $frm;
+
+},
+
+addField: function( field ){
+
+    var input;
+
+    switch(field.type){
+        case 'textarea':
+            input = $('<textarea>');
+            break;
+        case 'combobox':
+        case 'select':
+            input = $('<select>');
+            break;
+        case 'password':
+            input = $('<input type="password">');
+            break;
+        case 'hidden':
+            input = $('<input type="hidden">');
+            break;
+        default:
+            input = $('<input type="text">');
+            if(field.type!='text'){
+                input.addClass('eiseIntra_'+field.type);
+            }
+            break;
+    }
+
+    //input.attr('id', input.name);
+    input.attr('name', field.name);
+
+
+    if(field.value)
+        input.val(field.value);
+
+    if(field.type!='hidden' && field.title){
+
+        input.addClass('eiseIntraValue');
+
+        if(field.required){
+            input.attr('required', 'required');
+        }
+
+        var $field = $('<div class="eiseIntraField"><label>'+field.title+':</label></div>').append(input);
+    
+    } else {
+        
+        $field = input;
+            
+    }
+    
+    $field.appendTo(this);
+
+    return $field;
 
 }
 
@@ -773,7 +971,11 @@ function showDropDownWindow(o, divID) {
     
    /* Made by Mathias Bynens <http://mathiasbynens.be/> */
 function number_format(a, b, c, d) {
- a = Math.round(a * Math.pow(10, b)) / Math.pow(10, b);
+
+    var minus = (parseFloat(a)<0 ? '-' : '');
+
+ a = Math.abs(Math.round(a * Math.pow(10, b)) / Math.pow(10, b));
+
  e = a + '';
  f = e.split('.');
  if (!f[0]) {
@@ -800,7 +1002,8 @@ function number_format(a, b, c, d) {
   f[0] = j + f[0];
  }
  c = (b <= 0) ? '' : c;
- return f[0] + c + f[1];
+    
+    return minus + f[0] + c + f[1];
 }
 
 function replaceCyrillicLetters(str){

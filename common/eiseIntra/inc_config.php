@@ -25,7 +25,7 @@ define ("jQueryUIRelativePath", jQueryRelativePath."ui/");
 define ("jQueryUITheme","redmond");
 define ("imagesRelativePath", commonStuffRelativePath."images/");
 
-define ("eiseIntraCookiePath", "/eiseAdmin/");
+define ("eiseIntraCookiePath", "/");
 define ("eiseIntraCookieExpire", time()+60*60*24*30); // 30 days
 
 define ('eiseIntraUserMessageCookieName', 'UserMessage');
