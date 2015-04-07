@@ -6,6 +6,8 @@ ob_start();
 
 $title = "A System";
 
+include "./version.php";
+
 include ("../common/eiseIntra/inc_intra.php");
 include ("config.php");
 
@@ -17,7 +19,7 @@ try {
     die($e->getMessage());
 }
 
-$intra = new eiseIntra($oSQL, Array("collect_keys"=>$collect_keys));
+$intra = new eiseIntra($oSQL, Array('version'=>$version, 'collect_keys'=>true, 'menuCollapseAll'=>true));
 
 if (!$flagNoAuth) {
         // checking is session available
@@ -42,5 +44,5 @@ if ($intra->local)
     
 $strLocal = $intra->local; //backward-compatibility stuff
 
-include ("../common/eiseIntra/inc_backcomp.php");
+include eiseIntraAbsolutePath."/inc_backcomp.php";
 ?>
