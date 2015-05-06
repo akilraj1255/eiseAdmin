@@ -397,7 +397,7 @@ switch ($_GET["toGen"]){
 \$rs".strtoupper($arrTable['prefix'])." = \$oSQL->do_query(\$sql".strtoupper($arrTable['prefix']).");
 \$rw".strtoupper($arrTable['prefix'])." = \$oSQL->fetch_array(\$rs".strtoupper($arrTable['prefix']).");
 
-\$arrActions[]= Array ('title' => 'Back to list'
+\$arrActions[]= Array ('title' => \$intra->translate('Back to list')
 	   , 'action' => \"".(str_replace("tbl_", "", $tblName))."_list.php\"
 	   , 'class'=> 'ss_arrow_left'
 	);
@@ -408,72 +408,54 @@ include eiseIntraAbsolutePath.'inc-frame_top.php';
 
 <form action=\"<?php  echo \$_SERVER[\"PHP_SELF\"] ; ?>\" method=\"POST\" class=\"eiseIntraForm\">\r\n";
 foreach($arrTable["PK"] as $i=>$pk){
-    $strCode .= "<input type=\"hidden\" id=\"".$pk."\" name=\"".$pk."\" value=\"<?php  echo htmlspecialchars(\$".$pk.") ; ?>\">\r\n";
+    $strCode .= "<?php\r\n";
+    $strCode .= "echo \$intra->field(null, '{$pk}', \${$pk}, array('type'=>'hidden'));\r\n";
+    $strCode .= "echo \$intra->field(null, eiseIntra::dataActionKey, 'update', array('type'=>'hidden'));\r\n";
+    $strCode .= "?>\r\n";
 }
-$strCode .= "<input type=\"hidden\" id=\"DataAction\" name=\"DataAction\" value=\"update\">
-
+$strCode .= "
 <fieldset class=\"eiseIntraMainForm\"><legend><?php echo \$intra->arrUsrData[\"pagTitle{\$intra->local}\"]; ?></legend>\r\n\r\n";
+$strCode .= "<?php\r\n\r\n";
         $i=0;
         foreach($arrTable['columns'] as $ix=>$col){
-           if ($col["DataType"]=="PK")
-               continue;
-           if ($col["DataType"]=="binary")
-               continue;
-           if ($col["DataType"]=="activity_stamp")
-               continue;
-           
-           
-           $strCode .= "<div class=\"eiseIntraField\">\r\n".
-            "<label><?php echo \$intra->translate(\"".($col["Comment"]!="" ? $col["Comment"] : $col["Field"])."\"); ?>:</label>";
-           $strCode .= "<?php\r\n";
-           $strParams ="";
-           switch ($col["DataType"]){
-               case "FK":
-                  
-                  if ( $col["ref_table"]!=""){
-                        $arrRefTable = $intra->getTableInfo($dbName, $col["ref_table"]);
-                        $strCode .= "\$rs = \$intra->getDataFromCommonViews('', '', '{$col["ref_table"]}', '{$arrRefTable["prefix"]}');\r\n";
-                    } else {
-                        $strCode .= "\$sql = \"SELECT NULL as optValue, NULL as optText\";\r\n";
-                        $strCode .= "\$rs = \$oSQL->q(\$sql);\r\n";
-                    }
-                   $strCode .= "while(\$rw = \$oSQL->f(\$rs)){ \$arrOptions[\$rw['optValue']] = \$rw['optText']; }\r\n";
-                   $strCode .=    
-                   "echo \$intra->showCombo(\"".$col["Field"]."\", \$rw".strtoupper($arrTable['prefix'])."[\"".$col["Field"]."\"], \$arrOptions
-                   , Array('strZeroOptnText'=>\$intra->translate('-- please select')));\r\n";
-                  break;
-               case "date":
-               case "datetime":
-                  $strCode .= "echo \$intra->showTextBox(\"".$col["Field"]."\", ".
-                  "\$intra->DateSQL2PHP(\$rw".strtoupper($arrTable['prefix'])."[\"".$col["Field"]."\"])".
-                  ", Array('type'=>'{$col["DataType"]}'));\r\n";
-                  break;
-               case "real":
-               case "integer":
-                  $strCode .= " echo \$intra->showTextBox(\"".$col["Field"]."\", ".
-                  "\$rw".strtoupper($arrTable['prefix'])."[\"".$col["Field"]."\"]".
-                  ", Array('type'=>'number'));";
-                  break;
-               case "boolean":
-                  $strCode .= " echo \$intra->showCheckBox(\"".$col["Field"]."\", ".
-                  "\$rw".strtoupper($arrTable['prefix'])."[\"".$col["Field"]."\"]);";
-                  break;
-               default:
-                  $strCode .= " echo \$intra->showTextBox(\"".$col["Field"]."\", ".
-                  "\$rw".strtoupper($arrTable['prefix'])."[\"".$col["Field"]."\"]".
-                  ", Array('type'=>'text'));";
-                  break;
-           }
-           $strCode .= "?></div>\r\n\r\n";
-        }
+            if ($col["DataType"]=="PK")
+                continue;
+            if ($col["DataType"]=="binary")
+                continue;
+            if ($col["DataType"]=="activity_stamp")
+                continue;
+            
+            $title = ($col['Comment'] ? $col['Comment'] : $col['Field']);
+            $fieldValue = "\$rw".strtoupper($arrTable['prefix'])."[\"".$col["Field"]."\"]";
 
+            switch($col['DataType']){
+                case 'FK':
+                    if ( $col["ref_table"]!=""){
+                        $arrRefTable = $intra->getTableInfo($dbName, $col["ref_table"]);
+
+                        $strCode .= "echo \$intra->field('{$title}', '{$col['Field']}', {$fieldValue}, array('type'=>'select', 'source'=>'{$col['ref_table']}'"
+                            .($arrRefTable['prefix'] ? ", 'source_prefix'=>'{$arrRefTable['prefix']}'" : '')
+                            ."));\r\n\r\n";
+                    } else {
+                        $strCode .= "\$source = array ('option1'=>'text1', 'option2'=>'text2');\r\n";
+                        $strCode .= "echo \$intra->field('{$title}', '{$col['Field']}', {$fieldValue}, array('type'=>'select', 'source'=>\$source));\r\n\r\n";
+                    }
+                    break;
+                default:
+                    $type = ($col['DataType']=='text' ? '' : ", array('type'=>'{$col['DataType']}')");
+                    $strCode .= "echo \$intra->field('{$title}', '{$col['Field']}', {$fieldValue}{$type});\r\n\r\n";
+                    break;
+            }
+           
+        }
+$strCode .= "?>\r\n\r\n";
 $strCode .= "<div class=\"eiseIntraField\">\r\n
 <?php 
 if (\$intra->arrUsrData[\"FlagWrite\"]) {
  ?>
 <label>&nbsp;</label><div class=\"eiseIntraValue\"><input class=\"eiseIntraSubmit\" type=\"Submit\" value=\"Update\">
 <?php 
-if (\$".$arrTable['PK'][0]."!=\"\" && \$rw".strtoupper($arrTable['prefix'])."[\"".$arrTable['prefix']."DeleteDate\"]==\"\"){
+if (\$".$arrTable['PK'][0]."!=\"\"){
 ?>
 <input type=\"button\" value=\"Delete\" class=\"eiseIntraDelete\">
 <?php  
@@ -488,7 +470,7 @@ $strCode .= "
 </form>
 <script>
 $(document).ready(function(){
-    eiseIntraInitializeForm();
+    $('.eiseIntraForm').eiseIntraForm();
 });
 </script>
 <?php
@@ -628,6 +610,23 @@ CREATE TABLE `{$rwEnt["entTable"]}_number` (
         $strTBL = $rwEnt["entTable"];
         $strLTBL = $rwEnt["entTable"]."_log";
 
+        $arrReservedColumnNames = array("{$entID}ID"
+            , "{$entID}StatusID"
+            , "{$entID}ActionLogID"
+            , "{$entID}StatusActionLogID"
+            , "{$entID}StatusLogID"
+            , "{$entID}FlagDeleted"
+            , "{$entID}InsertBy"
+            , "{$entID}InsertDate"
+            , "{$entID}EditBy"
+            , "{$entID}EditDate");
+        $arrReservedColumnNames_Log = array("l{$entID}ID"
+            , "l{$entID}GUID"
+            , "l{$entID}InsertBy"
+            , "l{$entID}InsertDate"
+            , "l{$entID}EditBy"
+            , "l{$entID}EditDate");
+
         $arrMasterTable = array();
         $arrLogTable = array();
         try { $arrMasterTable = $intra->getTableInfo($dbName, $strTBL); } catch (Exception $e) {$arrMasterTable['columns'] = array();}
@@ -674,13 +673,12 @@ CREATE TABLE `{$rwEnt["entTable"]}_number` (
                     break;
                 case "numeric":
                 case "real":
-                    $strType = "DECIMAL(10,2) NULL DEFAULT NULL";    
+                    $strType = "DECIMAL(12,2) NULL DEFAULT NULL";    
                     break;
                 case "date":
                 case "datetime":
                     $strType = $rwATR["atrType"].' NULL DEFAULT NULL';
                     break;
-                case "text":
                 case "textarea":
                     $strType = "LONGTEXT NULL";
                     break;
@@ -691,32 +689,35 @@ CREATE TABLE `{$rwEnt["entTable"]}_number` (
                     $strType = "VARCHAR(36) NULL DEFAULT NULL";
                     break;
                 case "varchar":
+                case "text":
                 default:                    
                     $strType = "VARCHAR(1024) NOT NULL DEFAULT ''";
                     break;
             }
 
-            if(!@array_key_exists($rwATR['atrID'], $arrMasterTable['columns'])){
-                if(count($arrMasterTable['columns'])>0){
-                    $strFieldsMaster .= "\r\n\t, ADD COLUMN `{$rwATR["atrID"]}` {$strType} COMMENT ".$oSQL->escape_string($rwATR["atrTitle"])." AFTER `{$lastMasterColName}`" ;
-                    $strKeysMaster .= ($strKeyMaster!='' ? "\r\n\t, ADD INDEX {$strKeyMaster}" : '');
-                    $lastMasterColName = $rwATR['atrID'];
-                } else {
-                    $strFieldsMaster .= "\r\n\t, `{$rwATR["atrID"]}` {$strType} COMMENT ".$oSQL->escape_string($rwATR["atrTitle"]);
-                    $strKeysMaster .= ($strKeyMaster!='' ? "\r\n\t, KEY {$strKeyMaster}" : '');
-                }
-            } 
+            if(!in_array($rwATR['atrID'], $arrReservedColumnNames))
+                if(!@array_key_exists($rwATR['atrID'], $arrMasterTable['columns'])){
+                    if(count($arrMasterTable['columns'])>0){
+                        $strFieldsMaster .= "\r\n\t, ADD COLUMN `{$rwATR["atrID"]}` {$strType} COMMENT ".$oSQL->escape_string($rwATR["atrTitle"])." AFTER `{$lastMasterColName}`" ;
+                        $strKeysMaster .= ($strKeyMaster!='' ? "\r\n\t, ADD INDEX {$strKeyMaster}" : '');
+                        $lastMasterColName = $rwATR['atrID'];
+                    } else {
+                        $strFieldsMaster .= "\r\n\t, `{$rwATR["atrID"]}` {$strType} COMMENT ".$oSQL->escape_string($rwATR["atrTitle"]);
+                        $strKeysMaster .= ($strKeyMaster!='' ? "\r\n\t, KEY {$strKeyMaster}" : '');
+                    }
+                } 
 
-            if(!@array_key_exists('l'.$rwATR['atrID'], $arrLogTable['columns'])) {
-                if(count($arrLogTable['columns'])>0){
-                    $strFieldsLog .= "\r\n\t, ADD COLUMN `l{$rwATR["atrID"]}` {$strType} COMMENT ".$oSQL->escape_string($rwATR["atrTitle"])." AFTER `{$lastLogColName}`";
-                    $strKeysLog .= ($strKeyLog ? "\r\n\t, ADD INDEX {$strKeyLog}" : '');
-                    $lastLogColName = 'l'.$rwATR['atrID'];
-                } else {
-                    $strFieldsLog .= "\r\n\t, `l{$rwATR["atrID"]}` {$strType} COMMENT ".$oSQL->escape_string($rwATR["atrTitle"]);
-                    $strKeysLog .= ($strKeyLog ? "\r\n\t, KEY {$strKeyLog}" : '');
+            if(!in_array('l'.$rwATR['atrID'], $arrReservedColumnNames_Log))
+                if(!@array_key_exists('l'.$rwATR['atrID'], $arrLogTable['columns'])) {
+                    if(count($arrLogTable['columns'])>0){
+                        $strFieldsLog .= "\r\n\t, ADD COLUMN `l{$rwATR["atrID"]}` {$strType} COMMENT ".$oSQL->escape_string($rwATR["atrTitle"])." AFTER `{$lastLogColName}`";
+                        $strKeysLog .= ($strKeyLog ? "\r\n\t, ADD INDEX {$strKeyLog}" : '');
+                        $lastLogColName = 'l'.$rwATR['atrID'];
+                    } else {
+                        $strFieldsLog .= "\r\n\t, `l{$rwATR["atrID"]}` {$strType} COMMENT ".$oSQL->escape_string($rwATR["atrTitle"]);
+                        $strKeysLog .= ($strKeyLog ? "\r\n\t, KEY {$strKeyLog}" : '');
+                    }
                 }
-            }
             
         }
 
@@ -739,6 +740,7 @@ CREATE TABLE `{$rwEnt["entTable"]}_number` (
                 "\r\n\t, INDEX `IX_{$entID}StatusID` (`{$entID}StatusID`)".
                 "\r\n\t, INDEX `IX_{$entID}ActionLogID` (`{$entID}ActionLogID`)".
                 "\r\n\t, INDEX `IX_{$entID}StatusLogID` (`{$entID}StatusLogID`)".
+                "\r\n\t, INDEX `IX_{$entID}EditDate` (`{$entID}EditDate`)".
                 "\r\n\t".($strKeysMaster!="" ? $strKeysMaster : "").
                 "\r\n) ENGINE=InnoDB AUTO_INCREMENT=0 DEFAULT CHARSET=utf8;\r\n";
         } else {

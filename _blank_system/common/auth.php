@@ -2,7 +2,13 @@
 header("Content-Type: text/html; charset=UTF-8");
 header("Expires: 0");
 header("Cache-Control: must-revalidate, post-check=0, pre-check=0");
+
+// start buffering
 ob_start();
+
+// change dir to project directory
+// MUST for CLI-based script calls
+chdir(dirname(__FILE__));chdir('..');
 
 $title = "A System";
 

@@ -12,7 +12,7 @@ include ("config.php");
 $js_path = "";
 $easyAdmin = true;
 
-$intra = new eiseIntra(null, array('version'=>$version));
+$intra = new eiseIntra(null, array('version'=>$version, 'hideSTBLs'=>true));
 $intra->session_initialize();
 
 if (!$flagNoAuth){

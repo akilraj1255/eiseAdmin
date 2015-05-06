@@ -528,34 +528,32 @@ COLLATE='utf8_general_ci'
    
    $sqlTable['CREATE TABLE stbl_action'] = "
 CREATE TABLE `stbl_action` (
-    `actID` INT(11) NOT NULL AUTO_INCREMENT,
-    `actEntityID` VARCHAR(20) NULL DEFAULT NULL,
-    `actTrackPrecision` ENUM('date','datetime') NOT NULL DEFAULT 'datetime',
-    `actTitle` VARCHAR(255) NOT NULL DEFAULT '',
-    `actTitleLocal` VARCHAR(255) NOT NULL DEFAULT '',
-    `actTitlePast` VARCHAR(255) NULL DEFAULT NULL,
-    `actTitlePastLocal` VARCHAR(255) NULL DEFAULT NULL,
-    `actDescription` TEXT NOT NULL,
-    `actDescriptionLocal` TEXT NOT NULL,
-    `actFlagDeleted` INT(11) NOT NULL DEFAULT '0',
-    `actPriority` INT(11) NOT NULL DEFAULT '0',
-    `actFlagComment` INT(11) NOT NULL DEFAULT '0',
-    `actShowConditions` VARCHAR(255) NOT NULL DEFAULT '',
-    `actFlagHasEstimates` TINYINT(4) NOT NULL DEFAULT '0',
-    `actFlagDepartureEqArrival` TINYINT(4) NOT NULL DEFAULT '0',
-    `actFlagAutocomplete` TINYINT(4) NOT NULL DEFAULT '1',
-    `actDepartureDescr` VARCHAR(255) NULL DEFAULT NULL,
-    `actArrivalDescr` VARCHAR(255) NULL DEFAULT NULL,
-    `actFlagInterruptStatusStay` TINYINT(4) NOT NULL DEFAULT '0',
-    `actInsertBy` VARCHAR(255) NULL DEFAULT NULL,
-    `actInsertDate` DATETIME NULL DEFAULT NULL,
-    `actEditBy` VARCHAR(20) NULL DEFAULT NULL,
-    `actEditDate` DATETIME NULL DEFAULT NULL,
-    PRIMARY KEY (`actID`)
-)
-COMMENT='Defines actions for entities'
-COLLATE='utf8_general_ci'
-ENGINE=InnoDB;
+  `actID` int(11) NOT NULL AUTO_INCREMENT,
+  `actEntityID` varchar(20) DEFAULT NULL,
+  `actTrackPrecision` enum('date','datetime') NOT NULL DEFAULT 'datetime',
+  `actTitle` varchar(255) NOT NULL DEFAULT '',
+  `actTitleLocal` varchar(255) NOT NULL DEFAULT '',
+  `actTitlePast` varchar(255) DEFAULT NULL,
+  `actTitlePastLocal` varchar(255) DEFAULT NULL,
+  `actDescription` text NOT NULL,
+  `actDescriptionLocal` text NOT NULL,
+  `actFlagDeleted` int(11) NOT NULL DEFAULT '0',
+  `actPriority` int(11) NOT NULL DEFAULT '0',
+  `actFlagComment` int(11) NOT NULL DEFAULT '0',
+  `actShowConditions` varchar(255) NOT NULL DEFAULT '',
+  `actFlagHasEstimates` tinyint(4) NOT NULL DEFAULT '0',
+  `actFlagDepartureEqArrival` tinyint(4) NOT NULL DEFAULT '0',
+  `actFlagAutocomplete` tinyint(4) NOT NULL DEFAULT '1',
+  `actDepartureDescr` varchar(255) DEFAULT NULL,
+  `actArrivalDescr` varchar(255) DEFAULT NULL,
+  `actFlagInterruptStatusStay` tinyint(4) NOT NULL DEFAULT '0',
+  `actInsertBy` varchar(255) DEFAULT NULL,
+  `actInsertDate` datetime DEFAULT NULL,
+  `actEditBy` varchar(20) DEFAULT NULL,
+  `actEditDate` datetime DEFAULT NULL,
+  PRIMARY KEY (`actID`),
+  KEY `IX_actEntityID` (`actEntityID`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='Defines actions for entities';;
    ";
    
    $sqlTable['CREATE TABLE `stbl_action_status`'] = "CREATE TABLE `stbl_action_status` (
@@ -626,78 +624,74 @@ ENGINE=InnoDB;
     
     $sqlTable['CREATE stbl_status'] = "
 CREATE TABLE `stbl_status` (
-    `staID` INT(11) NOT NULL,
-    `staEntityID` VARCHAR(20) NOT NULL DEFAULT '',
-    `staTrackPrecision` ENUM('date','datetime') NOT NULL DEFAULT 'datetime',
-    `staTitle` VARCHAR(255) NOT NULL DEFAULT '',
-    `staTitleLocal` VARCHAR(255) NOT NULL DEFAULT '',
-    `staFlagCanUpdate` TINYINT(4) NOT NULL DEFAULT '0' COMMENT 'Defines can the entity be updated in current status',
-    `staFlagCanDelete` TINYINT(4) NOT NULL DEFAULT '0',
-    `staFlagDeleted` TINYINT(4) NOT NULL DEFAULT '0',
-    `staInsertBy` VARCHAR(255) NOT NULL DEFAULT '',
-    `staInsertDate` DATETIME NULL DEFAULT NULL,
-    `staEditBy` VARCHAR(255) NOT NULL DEFAULT '',
-    `staEditDate` DATETIME NULL DEFAULT NULL,
-    PRIMARY KEY (`staEntityID`, `staID`)
-)
-COMMENT='Defines entity statuses'
-COLLATE='utf8_general_ci'
-ENGINE=InnoDB;
+  `staID` int(11) NOT NULL,
+  `staEntityID` varchar(20) NOT NULL DEFAULT '',
+  `staTrackPrecision` enum('date','datetime') NOT NULL DEFAULT 'datetime',
+  `staTitle` varchar(255) NOT NULL DEFAULT '',
+  `staTitleMul` varchar(255) NOT NULL DEFAULT '',
+  `staTitleLocal` varchar(255) NOT NULL DEFAULT '',
+  `staTitleLocalMul` varchar(255) NOT NULL DEFAULT '',
+  `staFlagCanUpdate` tinyint(4) NOT NULL DEFAULT '0' COMMENT 'Defines can the entity be updated in current status',
+  `staFlagCanDelete` tinyint(4) NOT NULL DEFAULT '0',
+  `staFlagDeleted` tinyint(4) NOT NULL DEFAULT '0',
+  `staInsertBy` varchar(255) NOT NULL DEFAULT '',
+  `staInsertDate` datetime DEFAULT NULL,
+  `staEditBy` varchar(255) NOT NULL DEFAULT '',
+  `staEditDate` datetime DEFAULT NULL,
+  PRIMARY KEY (`staEntityID`,`staID`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='Defines entity statuses';
     ";
     
     $sqlTable['CREATE TABLE stbl_attribute'] = "
 CREATE TABLE `stbl_attribute` (
-    `atrID` VARCHAR(255) NOT NULL COMMENT 'Attribute ID (equal to field name in the Master table)',
-    `atrEntityID` VARCHAR(20) NOT NULL DEFAULT '' COMMENT 'Entity ID',
-    `atrTitle` VARCHAR(255) NULL DEFAULT NULL COMMENT 'Title in English',
-    `atrTitleLocal` VARCHAR(255) NULL DEFAULT NULL COMMENT 'Title in local language',
-    `atrShortTitle` VARCHAR(255) NOT NULL COMMENT 'Short title (for lists, in English)',
-    `atrShortTitleLocal` VARCHAR(255) NULL DEFAULT NULL COMMENT 'Short title (for lists, in local language)',
-    `atrFlagNoField` TINYINT(4) NOT NULL DEFAULT '0' COMMENT 'True when there\'s no field for this attribute in Master table',
-    `atrType` VARCHAR(20) NULL DEFAULT NULL COMMENT 'Type (see Intra types)',
-    `atrUOMTypeID` VARCHAR(10) NULL DEFAULT NULL COMMENT 'UOM type (FK to stbl_uom)',
-    `atrOrder` INT(11) NULL DEFAULT '10' COMMENT 'Defines order how this attribute appears on screen',
-    `atrClasses` VARCHAR(255) NOT NULL DEFAULT '' COMMENT 'CSS classes',
-    `atrDefault` VARCHAR(255) NOT NULL DEFAULT '' COMMENT 'Default Value',
-    `atrTextIfNull` VARCHAR(255) NOT NULL DEFAULT '' COMMENT 'Text to dispay wgen value not set',
-    `atrProgrammerReserved` TEXT NULL COMMENT 'Reserved for programmer',
-    `atrCheckMask` VARCHAR(255) NOT NULL DEFAULT '' COMMENT 'Regular expression for data validation',
-    `atrDataSource` VARCHAR(255) NOT NULL DEFAULT '' COMMENT 'Data source (table, view or array)',
-    `atrFlagHideOnLists` TINYINT(4) NOT NULL DEFAULT '0' COMMENT 'True when this attribute not shown on lists',
-    `atrFlagDeleted` TINYINT(11) NOT NULL DEFAULT '0' COMMENT 'True when attribute no longer used',
-    `atrInsertBy` VARCHAR(50) NULL DEFAULT NULL,
-    `atrInsertDate` DATETIME NULL DEFAULT NULL,
-    `atrEditBy` VARCHAR(50) NULL DEFAULT NULL,
-    `atrEditDate` DATETIME NULL DEFAULT NULL,
-    PRIMARY KEY (`atrID`, `atrEntityID`)
-)
-COMMENT='Defines entity attributes'
-COLLATE='utf8_general_ci'
-ENGINE=InnoDB;
+  `atrID` varchar(255) NOT NULL COMMENT 'Attribute ID (equal to field name in the Master table)',
+  `atrEntityID` varchar(20) NOT NULL DEFAULT '' COMMENT 'Entity ID',
+  `atrTitle` varchar(255) NOT NULL DEFAULT '',
+  `atrTitleLocal` varchar(255) NOT NULL DEFAULT '',
+  `atrShortTitle` varchar(255) NOT NULL DEFAULT '',
+  `atrShortTitleLocal` varchar(255) NOT NULL DEFAULT '',
+  `atrFlagNoField` tinyint(4) NOT NULL DEFAULT '0' COMMENT 'True when there''s no field for this attribute in Master table',
+  `atrType` varchar(20) DEFAULT NULL COMMENT 'Type (see Intra types)',
+  `atrUOMTypeID` varchar(10) DEFAULT NULL COMMENT 'UOM type (FK to stbl_uom)',
+  `atrOrder` int(11) DEFAULT '10' COMMENT 'Defines order how this attribute appears on screen',
+  `atrClasses` varchar(255) NOT NULL DEFAULT '' COMMENT 'CSS classes',
+  `atrDefault` varchar(255) NOT NULL DEFAULT '' COMMENT 'Default Value',
+  `atrTextIfNull` varchar(255) NOT NULL DEFAULT '' COMMENT 'Text to dispay wgen value not set',
+  `atrProgrammerReserved` text COMMENT 'Reserved for programmer',
+  `atrCheckMask` varchar(255) NOT NULL DEFAULT '' COMMENT 'Regular expression for data validation',
+  `atrDataSource` varchar(255) NOT NULL DEFAULT '' COMMENT 'Data source (table, view or array)',
+  `atrFlagHideOnLists` tinyint(4) NOT NULL DEFAULT '0' COMMENT 'True when this attribute not shown on lists',
+  `atrFlagDeleted` tinyint(11) NOT NULL DEFAULT '0' COMMENT 'True when attribute no longer used',
+  `atrInsertBy` varchar(50) DEFAULT NULL,
+  `atrInsertDate` datetime DEFAULT NULL,
+  `atrEditBy` varchar(50) DEFAULT NULL,
+  `atrEditDate` datetime DEFAULT NULL,
+  PRIMARY KEY (`atrID`,`atrEntityID`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='Defines entity attributes';
     ";
        
     $sqlTable['CREATE stbl_action_attribute'] = "
 CREATE TABLE `stbl_action_attribute` (
-    `aatID` INT(11) NOT NULL AUTO_INCREMENT,
-    `aatActionID` INT(11) NULL DEFAULT NULL,
-    `aatAttributeID` VARCHAR(50) NULL DEFAULT NULL,
-    `aatFlagToTrack` TINYINT(4) NOT NULL DEFAULT '0',
-    `aatFlagMandatory` TINYINT(4) NOT NULL DEFAULT '0',
-    `aatFlagToChange` TINYINT(4) NOT NULL DEFAULT '0',
-    `aatFlagToAdd` TINYINT(4) NOT NULL DEFAULT '0' COMMENT 'Defines should this attribute be added or updated if it already exists on given action',
-    `aatFlagToPush` TINYINT(4) NOT NULL DEFAULT '0',
-    `aatFlagEmptyOnInsert` TINYINT(4) NOT NULL DEFAULT '0',
-    `aatFlagTimestamp` VARCHAR(50) NOT NULL DEFAULT '',
-    `aatInsertBy` VARCHAR(255) NOT NULL DEFAULT '',
-    `aatInsertDate` DATETIME NULL DEFAULT NULL,
-    `aatEditBy` VARCHAR(255) NOT NULL DEFAULT '',
-    `aatEditDate` DATETIME NULL DEFAULT NULL,
-    `aatTemp` VARCHAR(255) NULL DEFAULT NULL,
-    PRIMARY KEY (`aatID`)
-)
-COMMENT='Defines the attributes to be set when the action is executed'
-COLLATE='utf8_general_ci'
-ENGINE=InnoDB;
+  `aatID` int(11) NOT NULL AUTO_INCREMENT,
+  `aatActionID` int(11) NOT NULL,
+  `aatAttributeID` varchar(50) NOT NULL,
+  `aatFlagToTrack` tinyint(4) NOT NULL DEFAULT '0',
+  `aatFlagMandatory` tinyint(4) NOT NULL DEFAULT '0',
+  `aatFlagToChange` tinyint(4) NOT NULL DEFAULT '0',
+  `aatFlagToAdd` tinyint(4) NOT NULL DEFAULT '0' COMMENT 'Defines should this attribute be added or updated if it already exists on given action',
+  `aatFlagToPush` tinyint(4) NOT NULL DEFAULT '0',
+  `aatFlagEmptyOnInsert` tinyint(4) NOT NULL DEFAULT '0',
+  `aatFlagUserStamp` tinyint(4) NOT NULL DEFAULT '0',
+  `aatFlagTimestamp` varchar(50) NOT NULL DEFAULT '',
+  `aatInsertBy` varchar(255) NOT NULL DEFAULT '',
+  `aatInsertDate` datetime DEFAULT NULL,
+  `aatEditBy` varchar(255) NOT NULL DEFAULT '',
+  `aatEditDate` datetime DEFAULT NULL,
+  `aatTemp` varchar(255) DEFAULT NULL,
+  PRIMARY KEY (`aatID`),
+  KEY `IX_aatActionID` (`aatActionID`),
+  KEY `IX_aatAttributeID` (`aatAttributeID`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='Defines the attributes to be set when the action is executed';
     ";
     
    $sqlTable['CREATE stbl_status_attribute'] = "

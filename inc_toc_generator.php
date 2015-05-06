@@ -22,15 +22,17 @@ $rsTab = $oSQL->do_query($sqlTab);
 <?php
 $arrFlags = Array();
 while ($rwTab = $oSQL->fa($rsTab)) {
-?>
-   <li id="<?php  echo $rwDB["Database"]."|".$rwTab[0] ; ?>"><a target='pane' 
+    
+    if ($rwTab[0]=="stbl_page") $arrFlags["hasPages"] = true;
+    if ($rwTab[0]=="stbl_role") $arrFlags["hasRoles"] = true;
+    if ($rwTab[0]=="stbl_entity") $arrFlags["hasEntity"] = true;
+    if ($rwTab[0]=="stbl_translation") $arrFlags["hasMultiLang"] = true;
+
+    if($intra->conf['hideSTBLs'] && preg_match('/^(stbl_|svw_)/i', $rwTab[0]))
+        continue;
+?><li id="<?php  echo $rwDB["Database"]."|".$rwTab[0] ; ?>"><a target='pane' 
       href="table_form.php?dbName=<?php  echo $rwDB["Database"] ; ?>&tblName=<?php  echo $rwTab[0] ; ?>"><span><?php echo($rwTab[0]) ?></span></a></li>
 <?php
-   if ($rwTab[0]=="stbl_page") $arrFlags["hasPages"] = true;
-   if ($rwTab[0]=="stbl_role") $arrFlags["hasRoles"] = true;
-   if ($rwTab[0]=="stbl_entity") $arrFlags["hasEntity"] = true;
-   if ($rwTab[0]=="stbl_translation") $arrFlags["hasMultiLang"] = true;
-
 }
 
 if ($arrFlags["hasEntity"]){
