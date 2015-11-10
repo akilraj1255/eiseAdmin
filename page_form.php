@@ -135,7 +135,8 @@ if (isset($DataAction)){
 			 , pagTitleLocal
              , pagFlagShowInMenu
 			 , pagFlagSystem
-			 , pagFlagHierarchy
+       , pagFlagHierarchy
+			 , pagFlagShowMyItems
 			 , pagTable
 			 , pagEntityID
              , pagIdxLeft
@@ -151,7 +152,8 @@ if (isset($DataAction)){
 			 , ".$oSQL->escape_string($_POST["pagTitleLocal"])."
              , ".($_POST["pagFlagShowInMenu"]=="on" ? "1" : "0")."
 			 , ".($_POST["pagFlagSystem"]=="on" ? "1" : "0")."
-			 , ".($_POST["pagFlagHierarchy"]=="on" ? "1" : "0")."
+       , ".($_POST["pagFlagHierarchy"]=="on" ? "1" : "0")."
+			 , ".($_POST["pagFlagShowMyItems"]=="on" ? "1" : "0")."
 			 , ".$oSQL->escape_string($_POST["pagTable"])."
              , ".$oSQL->escape_string($_POST["pagEntityID"])."
              , @pagIdxLeft
@@ -226,7 +228,8 @@ if (isset($DataAction)){
 			
             $sqlUpdateNode .= ", pagFlagShowInMenu=".($_POST["pagFlagShowInMenu"]=="on" ? "1" : "0")."
 				, pagFlagSystem = ".($_POST["pagFlagSystem"]=="on" ? "1" : "0")."
-				, pagFlagHierarchy = ".($_POST["pagFlagHierarchy"]=="on" ? "1" : "0")."
+        , pagFlagHierarchy = ".($_POST["pagFlagHierarchy"]=="on" ? "1" : "0")."
+				, pagFlagShowMyItems = ".($_POST["pagFlagShowMyItems"]=="on" ? "1" : "0")."
                 , pagTable = ".$oSQL->escape_string($_POST["pagTable"])."
                 , pagEntityID = ".$oSQL->escape_string($_POST["pagEntityID"])."
                , pagEditBy='$usrID'
@@ -464,9 +467,15 @@ ORDER BY PG1.pagIdxLeft";
 <td><?php echo $intra->showCheckBox("pagFlagShowInMenu", $rwPAG["pagFlagShowInMenu"]==1, " style='width:auto;'"); ?></td>
 </tr>
 
+
 <tr>
 <td class="field_title">Entity</td>
 <td><?php echo $intra->showTextBox("pagEntityID", $rwPAG["pagEntityID"], " maxlength=3 style='width:auto;'"); ?></td>
+</tr>
+
+<tr>
+<td class="field_title">Show "My Items"</td>
+<td><?php echo $intra->showCheckBox("pagFlagShowMyItems", $rwPAG["pagFlagShowMyItems"]==1, " style='width:auto;'"); ?></td>
 </tr>
 
 </table>

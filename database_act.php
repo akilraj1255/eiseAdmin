@@ -746,7 +746,7 @@ ENGINE=InnoDB;
     $sqlTable['INSERT stbl_action'] = "
 INSERT INTO `stbl_action` (`actID`, `actEntityID`, `actTrackPrecision`, `actTitle`, `actTitleLocal`, `actTitlePast`, `actTitlePastLocal`, `actDescription`, `actDescriptionLocal`, `actFlagDeleted`, `actPriority`, `actFlagComment`, `actShowConditions`, `actFlagHasEstimates`, `actFlagDepartureEqArrival`, `actFlagAutocomplete`, `actDepartureDescr`, `actArrivalDescr`, `actFlagInterruptStatusStay`, `actInsertBy`, `actInsertDate`, `actEditBy`, `actEditDate`) VALUES
     (1, NULL, 'datetime', 'Create', 'Создать', 'Created', 'Создан', 'create new', 'create new', 0, 0, 0, '', 0, 0, 1, NULL, NULL, 0, 'admin', NOW(), 'admin', NOW()),
-    (2, NULL, 'datetime', 'Update', 'Обновить данные', 'Updated', 'Данные обновлены', 'update existing', 'update existing', 0, 0, 0, '', 0, 0, 1, NULL, NULL, 0, 'admin', NOW(), 'admin', NOW()),
+    (2, NULL, 'datetime', 'Save', 'Сохранить данные', 'Saved', 'Данные сохранены', 'update existing', 'update existing', 0, 0, 0, '', 0, 0, 1, NULL, NULL, 0, 'admin', NOW(), 'admin', NOW()),
     (3, NULL, 'datetime', 'Delete', 'Удалить', 'Deleted', 'Удалено', 'delete existing', 'delete existing', 0, -1, 0, '', 0, 0, 1, NULL, NULL, 0, 'admin', NOW(), 'admin', NOW()),
     (4, NULL, 'datetime', 'Superaction', 'Superaction', 'Superaction', 'Superaction', '', '', 0, 0, 1, '', 0, 0, 0, '', '', 0, 'admin', NOW(), 'admin', NOW());
 ";
