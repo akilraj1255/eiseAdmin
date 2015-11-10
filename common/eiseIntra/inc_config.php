@@ -20,8 +20,12 @@ define ("eiseIntraCSSTheme", 'eise');
 
 define ("commonStuffAbsolutePath", dirname(eiseIntraAbsolutePath).DIRECTORY_SEPARATOR);
 
+define ("jQueryPath", commonStuffRelativePath."jquery/");
+define ("jQueryUIPath", jQueryPath."jquery-ui-1.11.4.custom/");
+
 define ("jQueryRelativePath", commonStuffRelativePath."jquery/");
 define ("jQueryUIRelativePath", jQueryRelativePath."ui/");
+
 define ("jQueryUITheme","redmond");
 define ("imagesRelativePath", commonStuffRelativePath."images/");
 

@@ -294,8 +294,9 @@ if ($_POST["hasPages"]=="on") {
     `pagFile` VARCHAR(255) NULL DEFAULT NULL,
     `pagTable` VARCHAR(20) NULL DEFAULT NULL,
     `pagEntityID` VARCHAR(3) NULL DEFAULT NULL,
-    `pagFlagSystem` TINYINT(4) UNSIGNED NULL DEFAULT NULL,
-    `pagFlagHierarchy` TINYINT(4) UNSIGNED NULL DEFAULT NULL,
+    `pagFlagShowMyItems` TINYINT(4) NOT NULL DEFAULT 0 COMMENT 'Displays My Items menu item when checked and entity set',
+    `pagFlagSystem` TINYINT(4) NOT NULL DEFAULT 0,
+    `pagFlagHierarchy` TINYINT(4) NOT NULL DEFAULT 0,
     `pagInsertBy` VARCHAR(30) NULL DEFAULT NULL,
     `pagInsertDate` DATETIME NULL DEFAULT NULL,
     `pagEditBy` VARCHAR(30) NULL DEFAULT NULL,
@@ -881,6 +882,24 @@ INSERT INTO `stbl_uom` (`uomID`, `uomType`, `uomTitleLocal`, `uomTitle`, `uomRat
     ('t', 'wgt', 'т', 't', 1000.0000, 2, 0, 0, NULL, NULL, NULL, NULL, NULL);
         ";
     
+    $sqlTable['CREATE TABLE `stbl_bookmark`'] = "CREATE TABLE `stbl_bookmark` (
+  `bkmID` int(10) NOT NULL AUTO_INCREMENT,
+  `bkmUserID` varchar(50) NOT NULL,
+  `bkmEntityID` varchar(20) NOT NULL,
+  `bkmEntityItemID` varchar(50) NOT NULL,
+  `bkmFlagDeleted` tinyint(4) NOT NULL DEFAULT '0',
+  `bkmInsertBy` varchar(50) DEFAULT NULL,
+  `bkmInsertDate` datetime DEFAULT NULL,
+  PRIMARY KEY (`bkmID`),
+  UNIQUE KEY `bkmUserID_bkmEntityID_bkmEntityItemID` (`bkmUserID`,`bkmEntityID`,`bkmEntityItemID`),
+  KEY `IX_bkmUserID` (`bkmUserID`),
+  KEY `IX_bkmEntityID` (`bkmEntityID`),
+  KEY `IX_bkmEntityItemID` (`bkmEntityItemID`),
+  KEY `IX_bkmInsertBy` (`bkmInsertBy`),
+  KEY `IX_bkmInsertDate` (`bkmInsertDate`)
+) ENGINE=InnoDB AUTO_INCREMENT=1000 DEFAULT CHARSET=utf8;
+    ";
+
     }
     
     $ii = 1;

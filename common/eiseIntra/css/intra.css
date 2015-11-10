@@ -1,6 +1,6 @@
 html { height: 100% }
 
-* html body { height: 100% } /*Äëÿ IE, ò.ê. îí íå ïîääåðæèâàåò min-height*/ 
+* html body { height: 100% } /*Ð”Ð»Ñ IE, Ñ‚.Ðº. Ð¾Ð½ Ð½Ðµ Ð¿Ð¾Ð´Ð´ÐµÑ€Ð¶Ð¸Ð²Ð°ÐµÑ‚ min-height*/ 
 
 body{
     margin: 0 0 0 0;
@@ -8,6 +8,8 @@ body{
     min-height: 100%;
     height: 100%;
 }
+
+* { box-sizing: border-box;}
 
 form{   margin: 0 0 0 0;  padding: 0 0 0 0; }
 img {   border: 0 none; }
@@ -57,10 +59,21 @@ div.menubutton  {
    float: right !important;
 }
 
-#sysmsg{
-    position: absolute;
-    white-space: nowrap;
-    z-index: 125;
+#sysmsg {
+    display: none;
+    overflow: visible;
+}
+
+.ei_dialog_notitle .ui-dialog-titlebar {
+    display:none;
+}
+
+.ui-dialog {
+    z-index: 100;
+}
+
+.ui-dialog .ui-dialog-titlebar-close span {
+    margin: -8px -8px !important;
 }
 
 .eiseIntraError {
@@ -128,6 +141,10 @@ div.menubutton  {
     cursor: default !important;
     width: 23%;
     padding-right: 1% !important;
+}
+
+.eiseIntraForm label.eiseIntraValue {
+    text-align: left;
 }
 
 .eiseIntraForm .eiseIntraValue{
@@ -318,23 +335,21 @@ div.eiseIntraComment {
 /* ajax-filled forms/lists  */
 /*****************************************************/
 .eif_template {
-    display: none;
+    display: none !important;
 }
 
 .eif_invisible {
     display: none;
 }
 
-.eif_spinner, .eif_notfound {
+.eif_spinner > *, .eif_notfound > * {
     min-height:150px;
     max-height:150px;
     height:150px;
     text-align: center;
     vertical-align: middle;
 }
-.eif_spinner td, .eif_notfound td{
-    vertical-align: middle;
-}
+
 .eif_spinner {
     background: url("/common/images/spinner_large.gif") no-repeat scroll center center transparent;
 }

@@ -22,23 +22,39 @@ protected $arrNewData = Array(); // new data, it could be $_POST
 
 protected $defaultDataToObtain = array('Text', 'ACL', 'STL', 'comments', 'files', 'messages');
 
-function __construct($oSQL, $intra, $entID, $entItemID, $flagArchive = false){
+function __construct( $oSQL, $intra, $entID, $entItemID, $conf = array() ){
     
+    $confDefault = array('flagArchive'=>false
+        , 'flagCreateEmptyObject' => false);
+
+    $confToMerge = is_array($conf) ? $conf : array('flagArchive'=>$conf);
+
+    $conf = array_merge($confDefault, $confToMerge);
+
     parent::__construct($oSQL, $intra, $entID);
     
     $this->entItemID = $entItemID;
     
-    $this->flagArchive = $flagArchive;
+    $this->flagArchive = $conf['flagArchive'];
     
-    if (!$entID)  throw new Exception ("Entity ID not set");
+    if ($entItemID || $conf['flagCreateEmptyObject']) {
+
+        if($entItemID){
+            if (!$flagArchive){
+                $this->getEntityItemData();
+            } else  {
+                $this->getEntityItemDataFromArchive();
+            }
+            
+            $this->staID = $this->item[$entID."StatusID"];
+
+        } else {
+            $this->staID = null;
+        }
+    } else 
+        throw new Exception ("Entity ID not set");
     
-    if (!$flagArchive){
-        $this->getEntityItemData();
-    } else  {
-        $this->getEntityItemDataFromArchive();
-    }
     
-    $this->staID = $this->item[$entID."StatusID"];
     
 }
 
@@ -111,6 +127,9 @@ function getEntityItemDataFromArchive(){
 
 function getEntityItemAllData($toRetrieve = null){
     
+    if(!$this->entItemID)
+        return array();
+
     if($toRetrieve===null)
         $toRetrieve = $this->defaultDataToObtain;
 
@@ -122,7 +141,8 @@ function getEntityItemAllData($toRetrieve = null){
     
     //   - Master table is $this->item
     // attributes and combobox values
-    $this->staID = (int)$this->item["{$this->entID}StatusID"];
+    if($this->item["{$this->entID}StatusID"]!==null)
+        $this->staID = (int)$this->item["{$this->entID}StatusID"];
 
     if(in_array('Master', $toRetrieve))
         $this->getEntityItemData();
@@ -131,7 +151,9 @@ function getEntityItemAllData($toRetrieve = null){
         foreach($this->conf["ATR"] as $atrID=>$rwATR){
             
             if (in_array($rwATR["atrType"], Array("combobox", "ajax_dropdown"))){
-                $this->item[$rwATR["atrID"]."_Text"] = $this->getDropDownText($rwATR, $this->item[$rwATR["atrID"]]);
+                $this->item[$rwATR["atrID"]."_text"] = !isset($this->item[$rwATR["atrID"]."_text"]) 
+                    ? $this->getDropDownText($rwATR, $this->item[$rwATR["atrID"]])
+                    : $this->item[$rwATR["atrID"]."_text"];
             }
 
         }
@@ -154,7 +176,7 @@ function getEntityItemAllData($toRetrieve = null){
                 ORDER BY aclInsertDate DESC, aclOldStatusID DESC";
         $rsACL = $this->oSQL->do_query($sqlACL);
         while($rwACL = $this->oSQL->fetch_array($rsACL)){
-            $this->item["ACL"][$rwACL["aclGUID"]] = $this->getActionData($rwACL["aclGUID"]);
+            $this->item["ACL_Cancelled"][$rwACL["aclGUID"]] = $this->getActionData($rwACL["aclGUID"]);
         }    
     }
     
@@ -411,22 +433,27 @@ public function addAction($arrAction = null){
             FROM {$this->conf["entTable"]} WHERE {$this->entID}ID='{$this->entItemID}'";
      
     $oSQL->do_query($sqlInsACL);  
-    
+
     // 3. insert ATV
 	// generate script that copy data from the master table
 	$arrFields = Array();
-    if (is_array($this->arrAction["aatFlagToTrack"]))
-        foreach($this->arrAction["aatFlagToTrack"] as $atrID => $options){
-            
-            // define attributes for timestamp
-            if ($rwAAT["aatFlagTimestamp"]) {
-                $this->arrAction["acl".$rwAAT["aatFlagTimestamp"]."_attr"] = ($rwAAT["aatFlagEmptyOnInsert"] ? "NULL" : $atrID);
-            }
-            
-    		$arrFields["l".$atrID] = ($rwAAT["aatFlagEmptyOnInsert"] ? "NULL" : $atrID);
-    		
+    foreach( (array)$this->arrAction["aatFlagToTrack"] as $atrID => $rwAAT ){
+        
+        // define attributes for timestamp
+        if ($rwAAT["aatFlagTimestamp"]) {
+            $this->arrAction["acl".$rwAAT["aatFlagTimestamp"]."_attr"] = ($rwAAT["aatFlagEmptyOnInsert"] ? "NULL" : $atrID);
         }
+        
+		$arrFields["l".$atrID] = ($rwAAT["aatFlagEmptyOnInsert"] 
+            ? "NULL" 
+            : ($rwAAT['aatFlagUserStamp'] 
+                ? $oSQL->e($this->intra->usrID)
+                : $atrID)
+            );
+		
+    }
 	
+
     
     if (count($arrFields)!=0){
     
@@ -503,7 +530,6 @@ public function findAction($aclOldStatusID, $aclNewStatusID, $aclActionID, $aclA
     return $arrACL;
 }
 
-
 function finishAction(){
     $usrID = $this->intra->usrID;
     $oSQL = $this->oSQL;
@@ -526,8 +552,22 @@ function finishAction(){
     if ($this->arrAction["actID"]!="2") {
         $sqlUpdEntTable = "UPDATE {$this->conf["entTable"]} SET
             {$this->entID}ActionLogID='{$this->arrAction["aclGUID"]}'
-            , {$this->entID}EditBy='{$this->intra->usrID}', {$this->entID}EditDate=NOW()
-            WHERE {$this->entID}ID='{$this->entItemID}'";
+            , {$this->entID}EditBy='{$this->intra->usrID}', {$this->entID}EditDate=NOW()";
+
+        // update tracked attributes
+        foreach( (array)$this->arrAction["aatFlagToTrack"] as $atrID=>$xx ){
+            $sqlUpdEntTable .= "\r\n, {$atrID} = (SELECT l{$atrID} FROM {$this->conf["entTable"]}_log WHERE l{$this->entID}GUID='{$this->arrAction["aclGUID"]}')";
+        }
+
+        // update userstamps
+        foreach ( (array)$this->arrAction["aatFlagUserStamp"] as $atrID => $xx ) {
+            if(array_key_exists($atrID, (array)$this->arrAction["aatFlagToTrack"]))
+                continue;
+            $sqlUpdEntTable .= "\r\n, {$atrID} = ".$oSQL->e($this->intra->usrID);
+        }
+
+        $sqlUpdEntTable .= "\r\n";    
+        $sqlUpdEntTable .= "WHERE {$this->entID}ID='{$this->entItemID}'";
         $oSQL->do_query($sqlUpdEntTable);
     }
     
@@ -535,9 +575,7 @@ function finishAction(){
     if (count($this->arrAction["aatFlagToTrack"])>0){
         $sqlUpdMaster = "UPDATE {$this->conf["entTable"]} SET 
             {$this->entID}EditBy='{$this->intra->usrID}', {$this->entID}EditDate=NOW()";
-        foreach($this->arrAction["aatFlagToTrack"] as $atrID=>$xx){
-            $sqlUpdMaster .= "\r\n, {$atrID} = (SELECT l{$atrID} FROM {$this->conf["entTable"]}_log WHERE l{$this->entID}GUID='{$this->arrAction["aclGUID"]}')";
-        }
+        
         $sqlUpdMaster .= "\r\nWHERE {$this->entID}ID='{$this->entItemID}'";
         $oSQL->do_query($sqlUpdMaster);
     }
@@ -694,6 +732,15 @@ public function prepareActions(){
     
     $this->arrAction = array_merge($rwACT, $this->arrAction);
 
+    if($timestamp = $this->arrNewData['aclETD'])
+        $this->arrAction['aclETD_attr'] = $this->intra->datePHP2SQL($timestamp);
+    if($timestamp = $this->arrNewData['aclETA'])
+        $this->arrAction['aclETA_attr'] = $this->intra->datePHP2SQL($timestamp);
+    if($timestamp = $this->arrNewData['aclATD'])
+        $this->arrAction['aclATD_attr'] = $this->intra->datePHP2SQL($timestamp);
+    if($timestamp = $this->arrNewData['aclATA'])
+        $this->arrAction['aclATA_attr'] = $this->intra->datePHP2SQL($timestamp);
+
     if (is_array($this->arrAction["aatFlagToTrack"]))
         foreach($this->arrAction["aatFlagToTrack"] as $atrID=>$options){
             // define attributes for timestamp
@@ -773,37 +820,44 @@ function updateMasterTable($arrNewData = Array(), $flagUpdateMultiple = false, $
     // 1. update table by visible/editable attributes list   
     $atrToUpd = Array();
     $strFieldList = "";
+
+    $arrATRToLoop = ($flagFullEditMode 
+        ? $this->conf['ATR']
+        : (is_array($this->conf['STA'][$this->item['staID']]['satFlagEditable']) 
+            ? $this->conf['STA'][$this->item['staID']]['satFlagEditable']
+            : array()
+            )
+        );
     
-    if(is_array($this->conf['STA'][$this->item['staID']]['satFlagEditable']))
-        foreach ($this->conf['STA'][$this->item['staID']]['satFlagEditable'] as $atrID=>$FlagWrite){
+    foreach ($arrATRToLoop as $atrID=>$FlagWrite){
 
-            $rwSAT = $this->conf['ATR'][$atrID];
+        $rwSAT = $this->conf['ATR'][$atrID];
 
-            if(!$rwSAT)
-                continue;
-
-            if ($rwSAT['atrFlagDeleted'])
-                continue;
-            
-            if ((!$FlagWrite && !$flagFullEditMode)                                                      // not editable
-                || ($arrNewData[$atrID]=="" && $flagUpdateMultiple)       // empty on multiple updates
-                || !isset($arrNewData[$rwSAT["atrID"]]))                           // not set
+        if(!$rwSAT)
             continue;
-            
-            $toEval = "\"".str_replace("\$_POST", "\$this->arrNewData", $intra->getSQLValue(Array('Field'=>$rwSAT['atrID'], 'DataType'=>$rwSAT['atrType'])))."\"";
-            eval("\$newValue = ".$toEval.";");
-            
-            if ($newValue!=$rwEnt[$rwSAT["atrID"]]){
-                $strFieldList .= "\r\n, `{$rwSAT["atrID"]}`={$newValue}";
-            }
-            
-            if ($rwSAT["atrUOMTypeID"]){
-                $strFieldList .= ", {$rwSAT["atrID"]}_uomID=".($this->arrNewData["{$rwSAT["atrID"]}_uomID"]
-                    ? $oSQL->e($this->arrNewData["{$rwSAT["atrID"]}_uomID"])
-                    : $oSQL->e($oSQL->d("SELECT uomID FROM stbl_uom WHERE uomType='{$rwSAT['atrUOMTypeID']}' AND uomRateToDefault=1.0 LIMIT 0,1"))
-                    );
-            }
+
+        if ($rwSAT['atrFlagDeleted'] && !$flagFullEditMode)
+            continue;
+        
+        if ((!$FlagWrite && !$flagFullEditMode)                                                      // not editable
+            || ($arrNewData[$atrID]=="" && $flagUpdateMultiple)       // empty on multiple updates
+            || !isset($arrNewData[$rwSAT["atrID"]]))                           // not set
+        continue;
+        
+        $toEval = "\"".str_replace("\$_POST", "\$this->arrNewData", $intra->getSQLValue(Array('Field'=>$rwSAT['atrID'], 'DataType'=>$rwSAT['atrType'])))."\"";
+        eval("\$newValue = ".$toEval.";");
+        
+        if ($newValue!=$rwEnt[$rwSAT["atrID"]]){
+            $strFieldList .= "\r\n, `{$rwSAT["atrID"]}`={$newValue}";
         }
+        
+        if ($rwSAT["atrUOMTypeID"]){
+            $strFieldList .= ", {$rwSAT["atrID"]}_uomID=".($this->arrNewData["{$rwSAT["atrID"]}_uomID"]
+                ? $oSQL->e($this->arrNewData["{$rwSAT["atrID"]}_uomID"])
+                : $oSQL->e($oSQL->d("SELECT uomID FROM stbl_uom WHERE uomType='{$rwSAT['atrUOMTypeID']}' AND uomRateToDefault=1.0 LIMIT 0,1"))
+                );
+        }
+    }
     
     $sqlUpdateTable = "UPDATE {$this->conf["entTable"]} SET
         {$entID}EditDate=NOW(), {$entID}EditBy='{$this->intra->usrID}'
@@ -848,6 +902,11 @@ function updateActionLogItem($aclGUID, $arrACL = null){
         
         $newValue = null;
         $strACLInputID = $atrID."_".$aclGUID;
+
+        if($arrAAT['aatFlagUserStamp']){
+            $strEntityLogFldToSet .= ", l{$atrID} = ".$oSQL->e($this->intra->usrID);
+            continue;
+        }
         
         // if we have it in arrNewData: atrID_aclGUID
         if (isset($this->arrNewData[$strACLInputID])   ) {
@@ -970,43 +1029,44 @@ function checkMandatoryFields(){
     $flagAutocomplete = $this->arrAction["actFlagAutocomplete"];
     $aclGUID = $this->arrAction["aclGUID"];
 
-    foreach($this->arrAction["aatFlagMandatory"] as $atrID => $rwATR){
+    if(is_array($this->arrAction["aatFlagMandatory"]))
+        foreach($this->arrAction["aatFlagMandatory"] as $atrID => $rwATR){
+                
+            $oldValue = $this->item[$atrID];
             
-        $oldValue = $this->item[$atrID];
-        
-        if ($this->arrAction["aclGUID"]==""){
-            $sqlCheckMandatory = "SELECT 
-                CASE WHEN IFNULL({$atrID}, '')='' THEN 0 ELSE 1 END as mandatoryOK 
-                FROM {$entTable} WHERE {$entID}ID='{$entItemID}'";
-            $sqlCheckChanges = "SELECT 
-                CASE WHEN IFNULL({$atrID}, '')='{$rwEnt[$atrID]}' THEN 0 ELSE 1 END as changedOK 
-                FROM {$entTable} WHERE {$entID}ID='{$entItemID}'";;
-        } else {
+            if ($this->arrAction["aclGUID"]==""){
+                $sqlCheckMandatory = "SELECT 
+                    CASE WHEN IFNULL({$atrID}, '')='' THEN 0 ELSE 1 END as mandatoryOK 
+                    FROM {$entTable} WHERE {$entID}ID='{$entItemID}'";
+                $sqlCheckChanges = "SELECT 
+                    CASE WHEN IFNULL({$atrID}, '')='{$rwEnt[$atrID]}' THEN 0 ELSE 1 END as changedOK 
+                    FROM {$entTable} WHERE {$entID}ID='{$entItemID}'";;
+            } else {
+                
+                $sqlCheckMandatory = "SELECT 
+                    CASE WHEN IFNULL(l{$atrID}, '')='' THEN 0 ELSE 1 END as mandatoryOK 
+                    FROM {$entTable}_log 
+                    WHERE l{$entID}GUID='{$aclGUID}'";
+                //$oldValue = $this->arrAction["ACL"][$aclGUID]["ATV"][$atrID];
+                $sqlCheckChanges = "SELECT 
+                    CASE WHEN IFNULL(l{$atrID}, '')=".$oSQL->escape_string($oldValue)." THEN 0 ELSE 1 END as changedOK 
+                    FROM {$entTable}_log
+                    WHERE l{$entID}GUID='{$aclGUID}'";
+            }
             
-            $sqlCheckMandatory = "SELECT 
-                CASE WHEN IFNULL(l{$atrID}, '')='' THEN 0 ELSE 1 END as mandatoryOK 
-                FROM {$entTable}_log 
-                WHERE l{$entID}GUID='{$aclGUID}'";
-            //$oldValue = $this->arrAction["ACL"][$aclGUID]["ATV"][$atrID];
-            $sqlCheckChanges = "SELECT 
-                CASE WHEN IFNULL(l{$atrID}, '')=".$oSQL->escape_string($oldValue)." THEN 0 ELSE 1 END as changedOK 
-                FROM {$entTable}_log
-                WHERE l{$entID}GUID='{$aclGUID}'";
-        }
-        
-        if (!$oSQL->get_data($oSQL->do_query($sqlCheckMandatory))){
-            throw new Exception("Mandatory field '{$this->conf['ATR'][$atrID]["atrTitle"]}' is not set for {$entItemID}");
-            die();
-        } 
-        
-        if ($rwATR["aatFlagToChange"]){
-            if (!$oSQL->get_data($oSQL->do_query($sqlCheckChanges))){
-                throw new Exception("Field value for '{$rwATR["atrTitle"]}' cannot be '{$oldValue}', it should be changed for {$entItemID}");
+            if (!$oSQL->get_data($oSQL->do_query($sqlCheckMandatory))){
+                throw new Exception("Mandatory field '{$this->conf['ATR'][$atrID]["atrTitle"]}' is not set for {$entItemID}");
                 die();
             } 
-        }
             
-    }
+            if ($rwATR["aatFlagToChange"]){
+                if (!$oSQL->get_data($oSQL->do_query($sqlCheckChanges))){
+                    throw new Exception("Field value for '{$rwATR["atrTitle"]}' cannot be '{$oldValue}', it should be changed for {$entItemID}");
+                    die();
+                } 
+            }
+                
+        }
     
 }
 
@@ -1168,6 +1228,37 @@ function cancelAction(){
 
 }
 
+/**
+ * Function to obtain user ID who run action $actID last time.
+ * 
+ * @return user ID that could be found in stbl_user. If action not found, it returns NULL
+ *
+ * @package eiseIntra
+ */
+function whoRunAction($actID){
+    foreach($this->item['STL'] as $stlGUID=>$arrSTL){
+        if($arrSTL['stlArrivalAction']['aclActionID']==$actID){
+            return $arrSTL['stlArrivalAction']['aclFinishBy'];
+        }
+    }
+    return null;
+}
+
+/**
+ * Function to obtain user ID who last time lead the item to the status specified in $staID.
+ * 
+ * @return user ID that could be found in stbl_user. If status not found, it returns NULL
+ *
+ * @package eiseIntra
+ */
+function whoLeadToStatus($staID){
+    foreach($this->item['STL'] as $stlGUID=>$arrSTL){
+        if($arrSTL['stlStatusID']==$staID){
+            return $arrSTL['stlInsertBy'];
+        }
+    }
+    return null;
+}
 
 function GetJoinSentenceByCBSource($sqlSentence, $entField, &$strText, &$strValue){
    $prgValue = "/(SELECT|,)\s+(\S+) as optValue/i";
@@ -1193,6 +1284,34 @@ function GetJoinSentenceByCBSource($sqlSentence, $entField, &$strText, &$strValu
 /***********************************************************************************/
 /* Comments Routines                                                               */
 /***********************************************************************************/
+static function addComment($arrCommentData){
+    
+    GLOBAL $intra;
+    $oSQL = $intra->oSQL;
+    $usrID = $intra->usrID;
+
+    $oSQL->do_query("SET @scmGUID=UUID()");
+    
+    $sqlIns = "INSERT INTO stbl_comments (
+         scmGUID
+         , scmEntityItemID
+         , scmAttachmentID
+         , scmContent
+         , scmInsertBy, scmInsertDate, scmEditBy, scmEditDate
+         ) VALUES (
+         @scmGUID
+         , ".($arrCommentData['scmEntityItemID']!="" ? "'".$arrCommentData['scmEntityItemID']."'" : "NULL")."
+         , ".($arrCommentData['scmAttachmentID']!="" ? "'".$arrCommentData['scmAttachmentID']."'" : "NULL")."
+         , ".$oSQL->escape_string($arrCommentData['scmContent'])."
+         , '{$intra->usrID}', NOW(), '{$intra->usrID}', NOW());";
+    $oSQL->do_query($sqlIns);
+     
+    $scmGUID = $oSQL->get_data($oSQL->do_query("SELECT @scmGUID as scmGUID"));
+    
+    return $scmGUID; 
+
+}
+
 static function updateComments($DataAction){
 
 GLOBAL $intra;
@@ -1208,25 +1327,9 @@ switch ($DataAction) {
        die();
        break;
     case "add_comment":
-       
-       $oSQL->do_query("SET @scmGUID=UUID()");
-       
-       $sqlIns = "INSERT INTO stbl_comments (
-            scmGUID
-            , scmEntityItemID
-            , scmAttachmentID
-            , scmContent
-            , scmInsertBy, scmInsertDate, scmEditBy, scmEditDate
-            ) VALUES (
-            @scmGUID
-            , ".($_GET['scmEntityItemID']!="" ? "'".$_GET['scmEntityItemID']."'" : "NULL")."
-            , ".($_GET['scmAttachmentID']!="" ? "'".$_GET['scmAttachmentID']."'" : "NULL")."
-            , ".$oSQL->escape_string($_GET['scmContent'])."
-            , '{$intra->usrID}', NOW(), '{$intra->usrID}', NOW());";
-        $oSQL->do_query($sqlIns);
         
-        $scmGUID = $oSQL->get_data($oSQL->do_query("SELECT @scmGUID as scmGUID"));
-        
+        self::addComment($_GET);
+       
         $arrData = Array("scmGUID"=>$scmGUID
             , "user"=>$intra->getUserData($intra->usrID).' '.$intra->translate('at').' '
                 .date("d.m.Y H:i"));
@@ -1349,7 +1452,7 @@ static function getFile($filGUID, $filePathVar = 'stpFilesPath'){
     if(headers_sent())
         $this->Error('Some data has already been output, can\'t send file');
     header("Content-Length: ".$rwFile["filLength"]);
-    header('Content-Disposition: inline; filename='.$rwFile["filName"]);
+    header('Content-Disposition: inline; filename='.urlencode($rwFile["filName"]) );
     header('Cache-Control: private, max-age=0, must-revalidate');
     header('Pragma: public');
     ini_set('zlib.output_compression','0');
@@ -1387,8 +1490,11 @@ static function updateMessages($newData){
                 , msgInsertBy = '$intra->usrID', msgInsertDate = NOW(), msgEditBy = '$intra->usrID', msgEditDate = NOW()";
 
             $oSQL->q($sqlMsg);
-            $intra->redirect($intra->translate('Message sent'), $_SERVER["PHP_SELF"]."?{$newData['entID']}ID=".urlencode($newData["entItemID"]));
-            die();
+            
+            if($newData["entItemID"]!='' && $newData['entID']!='')
+                $intra->redirect($intra->translate('Message sent'), $_SERVER["PHP_SELF"]."?{$newData['entID']}ID=".urlencode($newData["entItemID"]));
+            break;
+
         case 'messageReply':
             die();
         case 'messageReplyAll':
@@ -1420,14 +1526,19 @@ static function sendMessages($conf){
         $rwUsr_To = $intra->getUserData_All($rwMsg['msgToUserID'], 'all');
         $rwUsr_CC = $intra->getUserData_All($rwMsg['msgCCUserID'], 'all');
 
-        $rwMsg[self::getItemIDField($rwMsg)] = $rwMsg['msgEntityItemID'];
+        $rwMsg['system'] = $conf['system'];
 
-        $rwMsg = array_merge(array('system' => $conf['system']
-                , 'entItemFormHref' => eiseIntra::getFullHREF(self::getFormURL($rwMsg, $rwMsg)))
-            , $rwMsg);
+        if($rwMsg['msgEntityItemID']!='' && $rwMsg['msgEntityID']!=''){
+
+            $rwMsg[self::getItemIDField($rwMsg)] = $rwMsg['msgEntityItemID'];
+
+            $rwMsg['entItemFormHref'] = eiseIntra::getFullHREF(self::getFormURL($rwMsg, $rwMsg));    
+
+        }
 
         $msg = array('mail_from'=> ($rwUsr_From['usrName'] ? "\"".$rwUsr_From['usrName']."\"  <".$rwUsr_From['usrEmail'].">" : '')
             , 'rcpt_to' => ($rwUsr_To['usrName'] ? "\"".$rwUsr_To['usrName']."\"  <".$rwUsr_To['usrEmail'].">" : '')
+            , 'Subject' => $rwMsg['msgSubject']
             , 'Text' => $rwMsg['msgText']
             );
         if ($rwMsg['msgCCUserID'])
@@ -1518,7 +1629,7 @@ function archive($arrExtraTables = Array()) {
 		switch ($rwATR["atrType"]){
 			case "combobox":
 			case "ajax_dropdown":
-				$val = $oSQL->e($this->item[$atrID."_Text"]);
+				$val = $oSQL->e($this->item[$atrID."_text"]);
 				break;
 			case "number":
 			case "numeric":

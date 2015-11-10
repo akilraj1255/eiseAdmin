@@ -213,8 +213,8 @@ switch ($_GET["toGen"]){
                 "\$arrCSS[] = commonStuffRelativePath.'eiseList/themes/default/screen.css';\r\n".
                 "include_once(commonStuffAbsolutePath.'eiseList/inc_eiseList.php');\r\n\r\n";
                 
-        $strCode .= "\$arrJS[] = jQueryUIRelativePath.'js/jquery-ui-1.8.16.custom.min.js';\r\n".
-                "\$arrCSS[] = jQueryUIRelativePath.'css/'.jQueryUITheme.'/jquery-ui-1.8.16.custom.css';\r\n\r\n";
+        $strCode .= "\$arrJS[] = jQueryUIPath.'/jquery-ui.min.js';\r\n".
+                "\$arrCSS[] = jQueryUIPath.'/jquery-ui.min.css';\r\n\r\n";
                 
         $strCode .= "\$listName = \$listName ? \$listName : \"".$arrTable['prefix']."\";\r\n".
                 "\$lst = new eiseList(\$oSQL, \$listName\r\n".
@@ -401,8 +401,8 @@ switch ($_GET["toGen"]){
 	   , 'action' => \"".(str_replace("tbl_", "", $tblName))."_list.php\"
 	   , 'class'=> 'ss_arrow_left'
 	);
-\$arrJS[] = jQueryUIRelativePath.'js/jquery-ui-1.8.16.custom.min.js';
-\$arrCSS[] = jQueryUIRelativePath.'css/'.jQueryUITheme.'/jquery-ui-1.8.16.custom.css';
+\$arrJS[] = jQueryUIPath.'/jquery-ui.min.js';
+\$arrCSS[] = jQueryUIPath.'/jquery-ui.min.css';
 include eiseIntraAbsolutePath.'inc-frame_top.php';
 ?>
 

@@ -4,9 +4,9 @@ include_once "inc_entity_item.php";
 
 class eiseEntityItemForm extends eiseEntityItem {
 
-function __construct($oSQL, $intra, $entID, $entItemID, $flagArchive = false){
+function __construct($oSQL, $intra, $entID, $entItemID, $conf = array()){
     
-    parent::__construct($oSQL, $intra, $entID, $entItemID, $flagArchive);
+    parent::__construct($oSQL, $intra, $entID, $entItemID, $conf);
     
     $this->getEntityItemAllData();
     
@@ -188,29 +188,13 @@ function showFieldset($title, $id, $arrAtr, $strExtraField=''){
 <?php 
 echo $strExtraField;
 
+if (count($arrAtr)==0)
+    $arrAtr = array_keys($this->conf['ATR']);
+
 foreach($arrAtr as $atr){
 
-    if ($atr=='__comments'){
-        $strFields .= $this->showComments();
-        continue;
-    }
-
-    if(!isset($this->conf['STA'][$this->staID]['satFlagShowInForm'][$atr]))
-        continue;
-
-    $rwAtr = $this->conf['ATR'][$atr];
-
-    $strFields .= ($strFields!="" ? "\r\n" : "");
-    $strFields .= "<div class=\"eiseIntraField\">";
-    $strFields .= "<label id=\"title_{$rwAtr["atrID"]}\">".$rwAtr["atrTitle{$intra->local}"].":</label>";
+    $strFields .= $this->field($atr);
     
-    $rwAtr["value"] = $this->item[$rwAtr["atrID"]];
-    $rwAtr["text"] = $this->item[$rwAtr["atrID"]."_Text"];
-    $rwAtr['FlagWrite'] = ($intra->arrUsrData["FlagWrite"] && $this->conf['STA'][$this->staID]['satFlagShowInForm'][$atr]);
-
-    $strFields .=  $this->showAttributeValue($rwAtr, "");
-    $strFields .= "</div>\r\n\r\n";
-
 }
 
 echo $strFields;
@@ -220,6 +204,39 @@ echo $strFields;
 <?php
 
 }
+
+/**
+ * 
+ */
+function field( $atr, $arrConf = array() ){
+
+    $intra = $this->intra;
+
+    if ($atr=='__comments'){
+        return $this->showComments();
+    }
+
+    if(!isset($this->conf['STA'][(int)$this->staID]['satFlagShowInForm'][$atr]))
+        return '';
+
+    $rwAtr = $this->conf['ATR'][$atr];
+
+    $arrConf = array_merge(
+        array('type'=>$rwAtr['atrType']
+            , 'text' => $this->item[$rwAtr["atrID"]."_text"]
+            , 'source' => $rwAtr['atrDataSource']
+            , 'source_prefix' => $rwAtr['atrProgrammerReserved']
+            , 'FlagWrite' => $this->conf['STA'][(int)$this->staID]['satFlagShowInForm'][$atr]
+            , 'UOM' => $rwAtr['atrUOMTypeID']
+            , 'textIfNull' => $intra->translate($rwAtr['atrTextIfNull'])
+            )
+        , $arrConf
+        );
+
+    return $this->intra->field($rwAtr["atrTitle{$intra->local}"], $rwAtr['atrID'], $this->item[$rwAtr["atrID"]], $arrConf);
+
+}
+
 
 function showActivityLog($arrConfig=array()){
 
@@ -470,7 +487,7 @@ function getActionLog($arrConfig = array()){
       WHERE aclEntityItemID='".$this->entItemID."'".
       (!$arrConfig['flagIncludeUpdate'] ? " AND aclActionID<>2" : "")
       ."
-      ORDER BY aclInsertDate DESC, actNewStatusID DESC";
+      ORDER BY aclInsertDate DESC, aclNewStatusID DESC";
     $rs = $this->oSQL->do_query($sql);
     while ($rw = $this->oSQL->fetch_array($rs)) {
         if(!$rw['usrID']) $rw['usrName'] = $rw['aclInsertBy'];
@@ -486,6 +503,9 @@ function getActionLog($arrConfig = array()){
             , 'aclEditBy' => $this->intra->translate('by ').($this->intra->local ? ($rw['usrNameLocal'] ? $rw['usrNameLocal'] : $rw['usrName']) : $rw['usrName'])
             , 'aclEditDate' => date("{$this->intra->conf['dateFormat']} {$this->intra->conf['timeFormat']}"
                 , strtotime($rw["aclEditDate"]))
+            , 'aclATA' => date("{$this->intra->conf['dateFormat']}"
+                    .(strtotime($rw["aclATA"])!=strtotime(date('Y-m-d', strtotime($rw["aclATA"]))) ? " {$this->intra->conf['timeFormat']}" : '')
+                , strtotime($rw["aclATA"]))
             );
         $arrACL[] = $acl;  
     }
@@ -507,7 +527,7 @@ function showActionLog_skeleton(){
     $strRes .= "<tr class=\"eif_template eif_evenodd\">\r\n";
     $strRes .= "<td class=\"eif_actTitlePast\"></td>\r\n";
     $strRes .= "<td class=\"eif_aclEditBy\"></td>";
-    $strRes .= "<td class=\"eif_aclEditDate\"></td>";
+    $strRes .= "<td class=\"eif_aclATA\" style=\"text-align:right;\"></td>";
     $strRes .= "</tr>";
     
     $strRes .= "<tr class=\"eif_template eif_evenodd eif_invisible\">";
@@ -798,6 +818,9 @@ function showFileList_skeleton(){
 
 function showMessages_skeleton(){
 
+    $oldFlagWrite = $this->intra->arrUsrData['FlagWrite'];
+    $this->intra->arrUsrData['FlagWrite'] = true;
+
     $strRes = '<div id="eiseIntraMessages" title="'.$this->intra->translate('Messages').'">'."\n";
 
     $strRes .= '<div class="eiseIntraMessage eif_template eif_evenodd">'."\n";
@@ -835,6 +858,8 @@ function showMessages_skeleton(){
         <input type="button" id="msgClose" value="'.$this->intra->translate('Close').'">
         </div>';
     $strRes .= "</form>\r\n";
+
+    $this->intra->arrUsrData['FlagWrite'] = $oldFlagWrite;
 
     return $strRes;
 

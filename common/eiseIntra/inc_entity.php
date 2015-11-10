@@ -148,13 +148,19 @@ private function init(){
         } 
         if($rwAAt['aatFlagToTrack'])
             $this->conf['ACT'][$rwAAt['actID']]['aatFlagToTrack'][$rwAAt['aatAttributeID']] = array('aatFlagEmptyOnInsert'=>(int)$rwAAt['aatFlagEmptyOnInsert']
-                , 'aatFlagToChange'=>(int)$rwAAt['aatFlagToChange']);
+                , 'aatFlagToChange'=>(int)$rwAAt['aatFlagToChange']
+                , 'aatFlagTimestamp'=>$rwAAt['aatFlagTimestamp']
+                , 'aatFlagUserStamp'=>$rwAAt['aatFlagUserStamp']
+                );
         if($rwAAt['aatFlagMandatory'])
             $this->conf['ACT'][$rwAAt['actID']]['aatFlagMandatory'][$rwAAt['aatAttributeID']] = array('aatFlagEmptyOnInsert'=>(int)$rwAAt['aatFlagEmptyOnInsert']
                 , 'aatFlagToChange'=>(int)$rwAAt['aatFlagToChange']);
         if($rwAAt['aatFlagTimestamp']){
             if (isset($this->conf['ACT'][$rwAAt['actID']]['aatFlagTimestamp'][$rwAAt['aatFlagTimestamp']]))
                 $this->conf['ACT'][$rwAAt['actID']]['aatFlagTimestamp'][$rwAAt['aatFlagTimestamp']] = $rwAAt['aatAttributeID'];
+        }
+        if($rwAAt['aatFlagUserStamp']){
+            $this->conf['ACT'][$rwAAt['actID']]['aatFlagUserStamp'][$rwAAt['aatAttributeID']] = $rwAAt['aatAttributeID'];
         }
             
     }
@@ -365,7 +371,7 @@ public function getList($arrAdditionalCols = Array(), $arrExcludeCols = Array())
     $staID = $this->staID;
 
     $lst = new eiseList($oSQL, $listName, Array('title'=>$this->conf["entTitle{$strLocal}Mul"].($staID!=="" 
-            ? ': '.$this->conf['STA'][$staID]["staTitle{$strLocal}"] 
+            ? ': '.($this->conf['STA'][$staID]["staTitle{$strLocal}Mul"] ? $this->conf['STA'][$staID]["staTitle{$strLocal}Mul"] : $this->conf['STA'][$staID]["staTitle{$strLocal}"])
             : '')
         ,  "intra" => $this->intra
         , "cookieName" => $listName.$staID
@@ -581,7 +587,7 @@ public function getFieldsHTML($arrConfig = Array()){
         
         if ( isset($this->item) ){
             $rwAtr["value"] = $this->item[$rwAtr["atrID"]];
-            $rwAtr["text"] = $this->item[$rwAtr["atrID"]."_Text"];
+            $rwAtr["text"] = $this->item[$rwAtr["atrID"]."_text"];
         }
 
         $rwAtr['FlagWrite'] = $FlagWrite;
@@ -674,7 +680,10 @@ function showAttributeValue($rwAtr, $suffix = ""){
             array_merge($arrInpConfig, Array("strAttrib" => " old_val=\"".htmlspecialchars($value)."\"")));
           break;
        default:
-          $strRet = $intra->showTextBox($inputName, $value, $arrInpConfig);
+          $strRet = $intra->showTextBox($inputName, $value, array_merge($arrInpConfig, Array("strAttrib" => " old_val=\"".htmlspecialchars($dtVal)."\""
+                , "type"=>$rwAtr['atrType']
+                ))
+          );
           break;
     }
     
@@ -805,23 +814,31 @@ function showActionButtons(){
     if (!$this->intra->arrUsrData["FlagWrite"])
         return;
 
-    if(is_array($this->conf['STA'][$this->staID]['ACT']))
-        foreach($this->conf['STA'][$this->staID]['ACT'] as $rwAct){
-            
-            if(count(array_intersect($this->intra->arrUsrData['roleIDs'], $rwAct['RLA']))==0)
-                continue;
+    if($this->staID!==null){
+        if(is_array($this->conf['STA'][$this->staID]['ACT'])){
+            foreach($this->conf['STA'][$this->staID]['ACT'] as $rwAct){
 
-            $title = $rwAct["actTitle{$this->intra->local}"];
-              
-            $strID = "btn_".$rwAct["actID"]."_".
-                  $rwAct["actOldStatusID"]."_".
-                  $rwAct["actNewStatusID"];
+                if(count(array_intersect($this->intra->arrUsrData['roleIDs'], $rwAct['RLA']))==0)
+                    continue;
 
-            $strOut .= "<input type='".($rwAct['actID']==3 ? 'button' : 'submit')."' class=\"".($rwAct['actID']==3 ? ' eiseIntraDelete' : 'eiseIntraActionSubmit')."\" name='actButton' id='$strID' value='"
-                    .htmlspecialchars($title)."'".
-                    " act_id=\"{$rwAct["actID"]}\" orig=\"{$rwAct["actOldStatusID"]}\" dest=\"{$rwAct["actNewStatusID"]}\">";
-              
+                $title = $rwAct["actTitle{$this->intra->local}"];
+                  
+                $strID = "btn_".$rwAct["actID"]."_".
+                      $rwAct["actOldStatusID"]."_".
+                      $rwAct["actNewStatusID"];
+
+                $strOut .= "<input type='".($rwAct['actID']==3 ? 'button' : 'submit')."' class=\"".($rwAct['actID']==3 ? ' eiseIntraDelete' : 'eiseIntraActionSubmit')."\" name='actButton' id='$strID' value='"
+                        .htmlspecialchars($title)."'".
+                        " act_id=\"{$rwAct["actID"]}\" orig=\"{$rwAct["actOldStatusID"]}\" dest=\"{$rwAct["actNewStatusID"]}\">";
+                  
+            }
         }
+    } else {
+        $strOut .= '<input type="submit" class="eiseIntraActionSubmit" name="actButton\" id="btn_1__0" value="'
+                        .$this->intra->translate('Create').'"'.
+                        ' act_id="1" orig="" dest="0">';
+    }
+
 
    
    return $strOut;

@@ -61,7 +61,7 @@ while ($rw = $oSQL->fetch_array($rs)){
     
     $flagIsEntity = ($rw["pagFile"]=="entity_form.php" && $rw["pagEntityID"]=="ent" ? true : false);
     
-    echo "<li".($rw["pagParentID"]==1 && $rw["FlagWrite"]
+    echo "<li".($rw["pagParentID"]==1 && ($rw["FlagWrite"] || !$intra->conf['menuCollapseAll'])
              ? " class='open'"
              : "")." id='".$rw["pagID"]."'>".
       ($rw["pagFile"] && !$flagIsEntity && !($rw["pagFile"]=="entity_form.php" && $rw["pagEntityID"]=="ent")
@@ -79,7 +79,9 @@ while ($rw = $oSQL->fetch_array($rs)){
       $rsSta = $oSQL->do_query($sqlSta);
       while ($rwSta = $oSQL->fetch_array($rsSta)){
          echo "<li id='".$rw["pagID"]."_".$rwSta["staID"]."'><a target='pane' href='".
-            $rw["pagFile"]."?".$rw["pagEntityID"]."_staID=".$rwSta["staID"]."'>".$rwSta["staTitle{$intra->local}"]."</a>\r\n";
+            $rw["pagFile"]."?".$rw["pagEntityID"]."_staID=".$rwSta["staID"]."'>"
+            .($rwSta["staTitle{$intra->local}Mul"] ? $rwSta["staTitle{$intra->local}Mul"] : $rwSta["staTitle{$intra->local}"])
+            ."</a>\r\n";
       }
    }
    

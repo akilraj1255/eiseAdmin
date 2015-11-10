@@ -84,9 +84,16 @@ class eiseSQL extends mysqli{
     // escapes chracters
     function e($str, $usage="for_ins_upd"){ //escape_string
         return "'".($usage!="for_ins_upd" 
-		? "%".str_replace("_", "\_", self::real_escape_string($str))."%"
-		: self::real_escape_string($str)
-		)."'";
+    		? "%".str_replace("_", "\_", self::real_escape_string($str))."%"
+    		: self::real_escape_string($str)
+    		)."'";
+    }
+    function unq($sqlReadyValue){
+        return (strtoupper($sqlReadyValue)=='NULL' ? null : (string)preg_replace("/^(')(.*)(')$/", '\2', $sqlReadyValue));
+    }
+
+    function secure($arg){
+        return $this->unq($this->e($arg));
     }
     
     //do_query, returns object mysqli_result
@@ -122,8 +129,16 @@ class eiseSQL extends mysqli{
         return $mysqli_result->num_rows;
     }
     
-    function f($mysqli_result){ //fetch_assoc
-        return $mysqli_result->fetch_assoc();
+    function f($mysqli_result_or_query){ //fetch_assoc
+        if (is_object($mysqli_result_or_query)){
+            $mysqli_result = $mysqli_result_or_query;
+            return $mysqli_result->fetch_assoc();
+        } else if (is_string($mysqli_result_or_query)){
+            $sql = $mysqli_result_or_query;
+            $mysqli_result = $this->q($sql);
+            return $this->f($mysqli_result);
+        } else
+            throw new Exception('Wront variable type passed to eiseSQL::get_data() function: '.gettype($variant));
     }
     function fa($mysqli_result){ //fetch_ix_array
         return $mysqli_result->fetch_array();
@@ -137,14 +152,14 @@ class eiseSQL extends mysqli{
     function a(){ //affected_rows
         return $this->affected_rows;
     }
-    function d($variant){ //get_data
-        if (is_object($variant)){
-            $mysqli_result = $variant;
+    function d($mysqli_result_or_query){ //get_data
+        if (is_object($mysqli_result_or_query)){
+            $mysqli_result = $mysqli_result_or_query;
             $mysqli_result->data_seek(0);
             $arr = $mysqli_result->fetch_array();
             return $arr[0];
-        } else if (is_string($variant)){
-            $sql = $variant;
+        } else if (is_string($mysqli_result_or_query)){
+            $sql = $mysqli_result_or_query;
             $mysqli_result = $this->q($sql);
             return $this->d($mysqli_result);
         } else
@@ -245,7 +260,7 @@ class eiseSQL extends mysqli{
     function not_right($error="MySQL error") {
         if ($this->flagProfiling)
             $this->showProfileInfo();
-        throw new Exception("{$this->errno}: {$this->error},\r\n{$error}\r\n");
+        throw new Exception("{$this->errno}: {$this->error},\r\n{$error}\r\n", $this->errno);
     }
     
     function startProfiling(){

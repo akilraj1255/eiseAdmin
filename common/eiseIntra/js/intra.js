@@ -1,4 +1,16 @@
+/**
+ * @fileOverview eiseIntraForm jQuery plugin
+ *               <p>License GNU 3
+ *               <br />Copyright 2008-2015 Ilya S. Eliseev <a href="http://e-ise.com">http://e-ise.com</a>
+ * @version 1.00
+ * @author Ilya S. Eliseev http://e-ise.com
+ * @requires jquery
+ * @requires jqueryui
+ */
+
 (function( $ ){
+
+var pluginName = 'eiseIntraForm';
 
 var isDateInputSupported = function(){
     var elem = document.createElement('input');
@@ -25,10 +37,16 @@ var getInput = function($form, strFieldName){
 
 }
 
+var getAllInputs = function($form){
+
+    return $form.find('.eiseIntraField input,.eiseIntraField select,.eiseIntraField textarea');
+
+}
+
 var getInputType = function($inp){
     var strType = ($inp.attr('type') ? $inp.attr('type') : 'text');
     if(strType=='text'){
-        var classList =$inp.attr('class').split(/\s+/);
+        var classList = ($inp.attr('class') ? $inp.attr('class').split(/\s+/) : []);
         $.each( classList, function(index, item){
             if (item.match(/^eiseIntra_/)) {
                 switch(item){
@@ -66,11 +84,13 @@ var setCurrentDate = function(oInp){
 }
 
 var getFieldLabel = function(oInp){
-    return oInp.prev('label');
+    return oInp.parents('.eiseIntraField').first().find('label').last();
 }
 var getFieldLabelText = function(oInp){
     return getFieldLabel(oInp).text().replace(/[\:\*]+$/, '');
 }
+
+var arrInitiallyRequiredFields = [];
 
 var methods = {
 
@@ -116,7 +136,7 @@ init: function( options ) {
 
         }
         
-        $this.find('input[type!=hidden],select').each(function() {
+        getAllInputs($this).each(function() {
             switch ($(this).attr('type')){ 
                 case "date":
                     if (conf.isDateInputSupported){
@@ -141,16 +161,15 @@ init: function( options ) {
             }
             $(this).change(function(){
                 $(this).addClass('eif_changed');
-            })
+            });
+            if( $(this).attr('required')=='required' && $(this).attr('id')!=''){
+                arrInitiallyRequiredFields.push($(this).attr('id'));
+            }
             
         });
-    
+
         $this.find('input[type="submit"]').each(function(){
             $(this).addClass('eiseIntraSubmit');
-        });
-    
-        $this.find('select.eiseIntraValue').each(function() {
-            //$(this).css('width', 'auto');
         });
     
         $this.find('input.eiseIntra_date, input.eiseIntra_datetime').each(function() {
@@ -243,13 +262,12 @@ init: function( options ) {
 
         })
         
-        $this.find('input.eiseIntraDelete').each(function() {
-            $(this).click(function(ev){
+        $this.find('input.eiseIntraDelete').click(function(ev){
                 if (confirm("Are you sure you'd like to delete?")){
+                    $this.find('input,select').removeAttr('required');
                     $this.find('#DataAction').val('delete');
                     $this.submit();
                 } 
-            });
         });
         
     });
@@ -260,26 +278,27 @@ validate: function( ) {
     if ($(this).find('#DataAction')=='delete')
         return true;
     
-    var canSubmit = true;
+    var canSubmit = true,
+        conf = $(this).data('eiseIntraForm').conf,
+        $this = $(this);
     
-    var conf = $(this).data('eiseIntraForm').conf;
-    
-    $(this).find('input.eiseIntraValue,select.eiseIntraValue').each(function() {
-        
-        var strValue = $(this).val();
-        var strType = getInputType($(this));
-        
-        var strRegExDateToUse = '';
+    getAllInputs($this).each(function() {
 
-        var $inpToCheck = $(this).hasClass("eiseIntra_ajax_dropdown") ? $(this).prev("input") : $(this);
-        
-        if ($inpToCheck.attr('required')==='required' && $inpToCheck.val()===""){
-            alert(getFieldLabelText($inpToCheck)+" is mandatory");
-            $(this).focus();
-            canSubmit = false;
-            return false; //break;
+        var strValue = $(this).val()
+            ,strType = getInputType($(this))
+            ,strRegExDateToUse = ''
+            ,$inpToCheck=$(this);
+
+        if ($inpToCheck.attr('required')==='required'){
+            if ($inpToCheck.val()===""){
+                alert(getFieldLabelText($inpToCheck)+" is mandatory");
+                $(this).focus();
+                canSubmit = false;
+                return false; //break;
+            }
         }
         
+
         switch (strType){
             case "number":
                 nValue = parseFloat(strValue
@@ -330,12 +349,13 @@ makeMandatory: function( obj ) {
 
     return this.each(function(){
     
-    $(this).find('input,select,textarea').each(function(){
+    getAllInputs($(this)).each(function(){
+
         if ($(this).attr('type')=='hidden')
             return true; // continue
         
         var label = getFieldLabel($(this));
-        if(label[0]){
+        if(label[0] && $.inArray( $(this).attr('id'), arrInitiallyRequiredFields ) < 0){
             label.text(label.text().replace(/\*\:$/, ":"));
             $(this).removeAttr('required');    
         }
@@ -616,6 +636,20 @@ encodeAuthString: function(){
 
 },
 
+/**
+ * Creates dialog box basing on jQueryUI dialog() widget. It adds FORM element to the DOM, fills it with fields/data and shows it with jqueryui .dialog(), with buttons "OK" and "Cancel".
+ * When user press "OK", it collects all data to the object and pass it to conf.onsubmit() function as the parameter. If this function returns true or not set at all, FROM is being submitted to the URL specified at conf.action using method specified at conf.method. Otherwise dialog box is closed and FORM element removed.
+ * When user press "Cancel", dialog box is closed and FORM element removed.
+ *
+ * @example $(element).eiseIntraForm('createDialog', {fields: {} });
+ * @param {Object} conf
+ * @param {String} conf.action Form "action" acttribute
+ * @param {String} conf.method Form "method" acttribute
+ * @param {Boolean} conf.flagUnsubmittable =true, if form should not be submitted 
+ * @param {Function} conf.onsubmit Callback for onSubmit form event
+ * @param {Array} conf.fields Fields array, see "addField()" method for details.
+ * @return {jQuery} jQuery object with created FORM element.
+ */
 createDialog: function( conf ){
 
     if(!conf.fields)
@@ -635,11 +669,16 @@ createDialog: function( conf ){
 
         $frm.eiseIntraForm('addField', field );
 
+        if(field.type=='file')
+            $frm.attr('enctype', 'multipart/form-data')
+
     });
 
+    var btnCloseTitle = (conf.flagUnsubmittable ? 'Close' : 'Cancel');
+
     $frm.append('<div class="eif_actionButtons">'
-        +'<input type="submit" value="OK" class="eiseIntraSubmit">'
-        +'<input type="button" value="Cancel" class="eif_btnClose">'
+        +(conf.flagUnsubmittable ? '' : '<input type="submit" value="OK" class="eiseIntraSubmit">')
+        +'<input type="button" value="'+btnCloseTitle+'" class="eif_btnClose">'
         +'</div>');
 
     $frm.eiseIntraForm('init').submit(function(){
@@ -660,72 +699,121 @@ createDialog: function( conf ){
             }
                 
         })
+        
 
         if(conf.onsubmit)
-            return conf.onsubmit(objVals);
-
+            return conf.onsubmit(objVals, $frm);
+        
         $frm.dialog('close').remove();
+
+        return true;
 
     });
 
-    $frm.dialog({
+    var dlgConf= {
         modal: true
         , title: conf.title
         , resize: "auto"
-    });
+    };
+
+    if(conf.onclose)
+        dlgConf.close = conf.onclose;
+
+    $frm.dialog(dlgConf);
 
     $frm.find('.eif_btnClose').click(function(){ $frm.dialog('close').remove(); })
 
     return $frm;
 
 },
-
+/**
+ * Adds field to the form
+ *
+ * @example $(element).eiseIntraForm('addField', {type: 'text', name: 'First Name', value: 'John Doe'});
+ * @example $(element).eiseIntraForm('addField', {type: 'hr'});
+ * @example $(element).eiseIntraForm('addField', {type: 'p', value: 'Lorem ipsum doler si amet...'});
+ * @param {Object} field
+ * @param {String} field.type Field type. To add INPUT element, specify input type here. Type 'p' adds paragraph to the form with content specified in field.value option. Type 'hr' adds HR to the form.
+ * @param {String} field.value Value for the field. Ignored when type set to 'hr'.
+ * @param {Function} conf.onsubmit Callback for onSubmit form event
+ * @param {Array} conf.fields Fields array, see "addField()" method for details.
+ * @return {jQuery} jQuery object with created FORM element.
+ */
 addField: function( field ){
 
-    var input;
+    var element;
 
-    switch(field.type){
+    var type = field.type.toLowerCase();
+
+    switch(type){
         case 'textarea':
-            input = $('<textarea>');
+            element = $('<textarea>');
             break;
         case 'combobox':
         case 'select':
-            input = $('<select>');
+            element = $('<select>');
+            $.each(field.options, function(ix, item){
+                $opt = $('<option>');
+                $opt.attr('value', item.v);
+                $opt.text(item.t);
+                $opt.appendTo(element);
+            })
             break;
         case 'password':
-            input = $('<input type="password">');
+            element = $('<input type="password">');
+            break;
+        case 'file':
+            element = $('<input type="file">');
+            break;
+        case 'checkbox':
+            element = $('<input type="checkbox">');
             break;
         case 'hidden':
-            input = $('<input type="hidden">');
+            element = $('<input type="hidden">');
+            break;
+        case 'hr':
+            element = $('<hr>');
+            break;
+        case 'p':
+            element = $('<p>');
             break;
         default:
-            input = $('<input type="text">');
+            element = $('<input type="text">');
             if(field.type!='text'){
-                input.addClass('eiseIntra_'+field.type);
+                element.addClass('eiseIntra_'+field.type);
             }
             break;
     }
 
-    //input.attr('id', input.name);
-    input.attr('name', field.name);
+    if(field.name)
+        element.attr('name', field.name);
 
+    if(field.value && $.inArray(type, ['hr', 'p', 'checkbox']) < 0 )
+        element.val(field.value);
 
-    if(field.value)
-        input.val(field.value);
+    if(field.value && type=='p')
+        element.html(field.value);
 
-    if(field.type!='hidden' && field.title){
+    if((field.value===true || field.checked) && type=='checkbox')
+        element.attr('checked', 'checked');
 
-        input.addClass('eiseIntraValue');
+    if( field.type!='hidden' && field.title && $.inArray(type, ['hr', 'p'])<0 ){
 
         if(field.required){
-            input.attr('required', 'required');
+            element.attr('required', 'required');
         }
 
-        var $field = $('<div class="eiseIntraField"><label>'+field.title+':</label></div>').append(input);
-    
+
+        var $field = (type=='checkbox' 
+            ? $('<div>')
+                .append('<label></label>')
+                .append( $('<label>'+field.title+'</label>').prepend(element).addClass('eiseIntraValue') )
+            : $('<div><label>'+field.title+':</label></div>').append(element.addClass('eiseIntraValue'))
+            ).addClass('eiseIntraField');
+
     } else {
         
-        $field = input;
+        $field = element;
             
     }
     
@@ -733,6 +821,42 @@ addField: function( field ){
 
     return $field;
 
+},
+
+/**
+ * This function  adjusts fieldset heights by maximum height, within the range specified in ixStart and ixFinish indexes
+ * WARNING: works under box-sizing: border-box
+ *
+ */
+adjustFieldsetHeights: function(ixStart, ixFinish){
+
+    ixStart = typeof(ixStart)=='undefined' ? 0 : ixStart;
+    ixFinish = typeof(ixFinish)=='undefined' ? 1 : ixFinish;
+
+    return this.each(function(){
+
+        var hMax = 0;
+        $(this).find('fieldset').each(function(ix){
+            if(ix<ixStart || ix>ixFinish)
+                return true; //continue
+            hMax = $(this).outerHeight(true) > hMax ? $(this).outerHeight(true) : hMax;
+        });
+
+
+        $(this).find('fieldset').each(function(ix){
+
+            if(ix<ixStart || ix>ixFinish)
+                return true; //continue
+
+            if($(this).outerHeight(true)<hMax){
+                var margins = $(this).outerHeight(true)-$(this).outerHeight(false);
+                $(this).height(hMax - margins);
+            }
+        });
+
+    });
+
+    
 }
 
 };
@@ -754,121 +878,157 @@ $.fn.eiseIntraForm = function( method ) {
 
 })( jQuery );
 
-/*********************************************************/
-/* eiseIntraAJAX jQuery plug-in */
-/*********************************************************/
+/**
+ * eiseIntraAJAX jQuery plug-in 
+ *
+ * @version 1.00
+ * @author Ilya S. Eliseev http://e-ise.com
+ * @requires jquery
+ */
 (function( $ ){
 
 var displayMode;
+var $template;
+
+var _fill = function($body, data, conf){
+
+    $body.find('.eif_spinner').css("display", 'none');
+
+    var $template = $body.find('.eif_template');
+
+    if(!data || data.length==0){
+        $body.find('.eif_notfound').css("display", displayMode);
+    }
+
+    $.each(data, function(i, rw){
+                  
+        // 1. clone elements of .eif_temlplate, append them to tbody
+        var $newItem = $template.clone(true);
+
+        $newItem.each(function(){
+            // 2. fill-in data to cloned elements
+            var $subItem = $(this);
+            $.each(rw, function (field, value){
+
+                // set data
+                var v = (value && typeof(value.v)!='undefined' ? value.v : value);
+                var $elem = $subItem.find('.eif_'+field);
+                if (!$elem[0])
+                    return true; //continue
+                switch ($elem[0].nodeName){
+                    case "INPUT":
+                    case "SELECT":
+                        $elem.val(v);
+                        break;
+                    case "A":
+                        if(value && typeof(value.h)!='undefined'){
+                            if(value.h!='' && value.v!=''){
+                                $elem.attr('href', value.h);
+                                $elem.html(value.v);
+                            } else {
+                                $elem.remove();
+                            }
+                        } else {
+                            $elem.remove();
+                        }
+                        break;
+                    default:
+                        $elem.html(v);
+                        break;
+                }
+                
+
+                // 3. make eif_invisible fields visible if data is set
+                if ($elem[0] && v && v!=''){
+                    var invisible = $elem.parents('.eif_invisible')[0];
+                    if(invisible)
+                        $(invisible).removeClass('eif_invisible');
+                }
+
+            })
+
+            // 4. paint eif_evenodd accordingly
+            if($(this).hasClass('eif_evenodd')){
+                $(this).addClass('tr'+i%2);
+            }
+
+            $(this).addClass('eif_loaded');
+
+            if(rw.rowClass && rw.rowClass.v){
+                $(this).addClass(rw.rowClass.v);
+            }
+
+        })
+        $newItem.first().addClass('eif_startblock');
+        $newItem.last().addClass('eif_endblock');
+          
+        // 5. TADAM! make it visible!
+        $newItem.removeClass('eif_template');
+        
+        $body.append($newItem);
+            
+    });
+
+    if(conf && conf.afterFill)
+        conf.afterFill(data);
+    
+}
 
 var methods = {
 
-fillTable: function(ajaxURL, conf){
-    var $tbody = this;
-    var $historyItemTemplate = $tbody.find('.eif_template');
-
+showSpinner: function(){
+    
+    var $body = this;
+    
     // hide "no events"
-    var curDisplayMode = $tbody.find('.eif_notfound').css("display")
+    var curDisplayMode = $body.find('.eif_notfound').css("display")
     displayMode = (curDisplayMode=='none' ? displayMode : curDisplayMode);
 
-    $tbody.find('.eif_notfound').css("display", "none");
+    $body.find('.eif_notfound').css("display", "none");
 
     // remove loaded items
-    $tbody.find('.eif_loaded').remove();
+    $body.find('.eif_loaded').remove();
 
     // show spinner
-    $tbody.find('.eif_spinner').css("display", displayMode);
+    $body.find('.eif_spinner').css("display", displayMode);
 
-    var strURL = ajaxURL;
+}, 
 
-    $.getJSON(strURL,
-        function(data){
+fillTable: function(URLorObj, conf){
+    
+    var $body = this;
 
-            $tbody.find('.eif_spinner').css("display", 'none');
+    if(typeof(URLorObj)=='object'){
+        
+        _fill($body, URLorObj, conf);
 
-            if(conf && conf.beforeFill)
-                conf.beforeFill(data);
+    } else {
 
-            if (data.ERROR){
-                alert(data.ERROR);
-                return;
-            }
+        $body.eiseIntraAJAX('showSpinner');
 
-            if(data.data.length==0){
-                $tbody.find('.eif_notfound').css("display", displayMode);
-            }
+        var strURL = URLorObj;
 
-            $.each(data.data, function(i, rw){
-                  
-                // 1. clone elements of .eif_temlplate, append them to tbody
-                var $newItem = $historyItemTemplate.clone(true);
 
-                $newItem.each(function(){
-                    // 2. fill-in data to cloned elements
-                    var $subItem = $(this);
-                    $.each(rw, function (field, value){
+        $.getJSON(strURL,
+            function(data){
 
-                        // set data
-                        var v = (value && typeof(value.v)!='undefined' ? value.v : value);
-                        var $elem = $subItem.find('.eif_'+field);
-                        if (!$elem[0])
-                            return true; //continue
-                        switch ($elem[0].nodeName){
-                            case "INPUT":
-                            case "SELECT":
-                                $elem.val(v);
-                                break;
-                            case "A":
-                                if(value && typeof(value.h)!='undefined'){
-                                    if(value.h!='' && value.v!=''){
-                                        $elem.attr('href', value.h);
-                                        $elem.html(value.v);
-                                    } else {
-                                        $elem.remove();
-                                    }
-                                } else {
-                                    $elem.remove();
-                                }
-                                break;
-                            default:
-                                $elem.html(v);
-                                break;
-                        }
-                        
+                if(conf && conf.beforeFill)
+                    conf.beforeFill(data);
 
-                        // 3. make eif_invisible fields visible if data is set
-                        if ($elem[0] && v && v!=''){
-                            var invisible = $elem.parents('.eif_invisible')[0];
-                            if(invisible)
-                                $(invisible).removeClass('eif_invisible');
-                        }
+                if ((data.status && data.status!='ok')
+                    || data.ERROR // backward-compatibility
+                    )
+                {
+                    alert(data.ERROR ? data.ERROR : data.message);
+                    return;
+                }
+                _fill($body, data.data, conf);
 
-                    })
+        });  
 
-                    // 4. paint eif_evenodd accordingly
-                    if($(this).hasClass('eif_evenodd')){
-                        $(this).addClass('tr'+i%2);
-                    }
+    }
 
-                    $(this).addClass('eif_loaded');
-
-                })
-                $newItem.first().addClass('eif_startblock');
-                $newItem.last().addClass('eif_endblock');
-                  
-                // 5. TADAM! make it visible!
-                $newItem.removeClass('eif_template');
-                
-                $tbody.append($newItem);
-                
-                    
-            });
-            
-            if(conf && conf.afterFill)
-                conf.afterFill(data);
-
-            
-    });  
+    
 }
 
 }
@@ -876,13 +1036,12 @@ fillTable: function(ajaxURL, conf){
 
 $.fn.eiseIntraAJAX = function( method ) {  
 
-
     if ( methods[method] ) {
         return methods[method].apply( this, Array.prototype.slice.call( arguments, 1 ));
     } else if ( typeof method === 'object' || ! method ) {
         return methods.init.apply( this, arguments );
     } else {
-        $.error( 'Method ' +  method + ' not exists for jQuery.eiseIntraForm' );
+        $.error( 'Method ' +  method + ' not exists for jQuery.eiseIntraAJAX' );
     } 
 
 };
@@ -938,12 +1097,75 @@ function eiseIntraAdjustFrameContent(){
 function MsgClose(){
        $("#sysmsg").fadeOut("slow");
     }
-function MsgShow(){
-	var msg = $('#sysmsg').html();
-	if (msg !=""){
-       $("#sysmsg").slideDown("slow", function(){ window.setTimeout("MsgClose()", 10000);});
-	  }
+function MsgShow(text){
+    var $sysmsg = $('#sysmsg');
+    
+    if(text)
+        $sysmsg.html(text);
+
+   
+    var msg = $sysmsg.html();
+	var msgText = $sysmsg.text();
+
+    if (msg !=""){
+
+        if(!$sysmsg.find('#sysmsgicon')[0])
+            $sysmsg.html('').append('<span class="ui-icon" style="float: left; margin-right: .3em;" id="sysmsgicon"></span>');
+
+        if(msgText.match(/^ERROR(\:){0,1}\s*/i)){ // show alert box with buttons
+            
+            if(typeof($sysmsg.dialog)=='function'){
+                
+                msg = msg.replace(/(^ERROR(\:){0,1}\s*)/i, '');
+
+                $sysmsg.css('white-space', 'pre');
+
+                $sysmsg.append('<p style="margin-left: 20px; margin-top:0">'+msg+'</p>').find('#sysmsgicon').addClass('ui-icon-alert');
+
+                $sysmsg.dialog({
+                    dialogClass: "ui-state-error ei_sysmsg_error"
+                    , resizable: false
+                    , title: 'ERROR'
+                    , buttons: {Ok: function(){ $sysmsg.dialog('close') } }
+                    , open: function(){
+                        window.setTimeout(function(){
+                            $sysmsg.dialog('close')
+                        }, 10000)
+                    }
+                    , hide: 'fade'
+                })
+            } else {
+                $("#sysmsg").addClass('error').slideDown("slow", function(){ window.setTimeout("MsgClose()", 10000);});
+            }
+        } else { // show infobox
+
+            if(typeof($sysmsg.dialog)=='function'){
+                
+                $sysmsg.append('<p style="margin-left: 20px; margin-top:0">'+msg+'</p>').find('#sysmsgicon').addClass('ui-icon-info');
+
+                $sysmsg.css('white-space', 'nowrap');
+
+                $sysmsg.dialog({
+                    dialogClass: "ei_dialog_notitle ei_sysmsg_info"
+                    , resizable: false
+                    , height: $('#menubar').height()
+                    , width: 'auto'
+                    , position: {my: 'right top', at: 'right top', of: window}
+                    , open: function(){
+                        window.setTimeout(function(){
+                            $sysmsg.dialog('close')
+                        }, 7000)
+                    }
+                    , hide: 'fade'
+                })
+            } else {
+                $("#sysmsg").addClass('normal').slideDown("slow", function(){ window.setTimeout("MsgClose()", 10000);});
+            }
+
+        }
+
     }
+}
 
 
 /* backward compatibilty stuff */    
